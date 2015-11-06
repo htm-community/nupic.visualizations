@@ -21,7 +21,7 @@ First, launch a simple Web server:
 python -m SimpleHTTPServer 8080
 ```
 
-Open your web browser and go to> [http://localhost:8080](http://localhost:8080)
+Open your web browser and go to [http://localhost:8080](http://localhost:8080)
 
 There are demo files in `examples/` for NuPIC OPF, NAB and generic CSV files. 
 
