@@ -1,0 +1,36 @@
+{
+  "name": "nupic-visualizations",
+  "version": "0.1.1",
+  "description": "Tools for visualizing NuPIC data",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nupic-community/nupic.visualizations"
+  },
+  "contributors": [
+  	{
+  		"name" : "Jeff Fohl",
+  		"email" : "jeff@fohl.com",
+  		"url" : "http://www.fohl.com"
+  	}
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nupic-community/nupic.visualizations/issues"
+  },
+  "engines": {
+    "node": "4.4.2"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "colors": "~1.1.0",
+    "gulp": "~3.9.0",
+    "gulp-jasmine": "~2.2.1",
+    "gulp-jshint": "~2.0.0",
+    "jasmine": "~2.3.0",
+    "jshint-stylish": "~2.1.0",
+    "karma" : "~0.13.15",
+    "phantomjs" : "~1.9.18",
+    "karma-phantomjs-launcher": "~0.2.1"
+  }
+}
