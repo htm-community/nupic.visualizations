@@ -1,0 +1,12 @@
+{
+  "name": "nupic-visualizations",
+  "version": "0.1.0",
+  "dependencies": {
+    "angular": "1.4.7",
+    "angular-bootstrap": "~0.14.3",
+    "bootstrap": "~3.3.5",
+    "papaparse": "~4.1.2",
+    "moment": "~2.8.3",
+    "dygraphs": "~1.0.1"
+  }
+}
