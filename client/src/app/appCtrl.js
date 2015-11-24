@@ -23,9 +23,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
   // the "Show/Hide Options" button
   $scope.toggleOptions = function() {
     $scope.view.optionsVisible = !$scope.view.optionsVisible;
-    timers.resize = $timeout(function() {
-      $scope.view.graph.resize();
-    });
+    if ($scope.view.graph) {
+      timers.resize = $timeout(function() {
+        $scope.view.graph.resize();
+      });
+    }
   };
 
   // read and parse a CSV file
