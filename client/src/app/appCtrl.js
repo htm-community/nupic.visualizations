@@ -1,50 +1,6 @@
-// some Settings:
-
-// TIMESTAMP:
-// represents the name of the column with timestamp/x-data;
-// currently such column must be present in the data, and be of ISO Date format.
-// TODO: allow numeric or missing timestamp column ?
-var TIMESTAMP = "timestamp";
-
-// POSSIBLE_OPF_DATA_FIELDS:
-// Is used only in OPF files during CSV parsing, where fields may, or may not be present,
-// depending on the user's Model settings in NuPIC.
-// If these fields are present, we'll include them as data fields.
-// FIXME: is this code (and guessDataFields()) needed? 'multiStepBestPredictions.5' are
-// plotted even though not in the list.
-var POSSIBLE_OPF_DATA_FIELDS = ["multiStepPredictions.actual",
-  "multiStepBestPredictions.actual"
-];
-
-// EXCLUDE_FIELDS:
-// used to ignore some fields completely, not showing them as possibilities in graph plots.
-var EXCLUDE_FIELDS = [];
-
-// HEADER_SKIPPED_ROWS:
-// number of rows (between 2nd .. Nth, included) skipped.
-// For OPF this must be >= 2 (as 2nd row is 'float,float,float', 3rd: ',,' metadata)
-// You can increase this (to about 2000) to skip untrained HTM predictions at the beginning
-// (eg. data where anomalyScore = 0.5 at the start).
-// Warning: default 2 is used, so for non-OPF data you lose the first 2 data points
-// (we find that acceptable).
-var HEADER_SKIPPED_ROWS = 2;
-
-// ZOOM:
-// toggle 2 methods of zooming in the graph: "RangeSelector", "HighlightSelector" (=mouse)
-var ZOOM = "HighlightSelector";
-
-// NONE_VALUE_REPLACEMENT:
-// used to fix a "bug" in OPF, where some columns are numeric
-// (has to be determined at the last row), but their first few values are "None".
-// We replace the with this value, defaults to 0.
-var NONE_VALUE_REPLACEMENT = 0;
-
-
 // Web UI:
 
-angular.module('app', ['ui.bootstrap']);
-
-angular.module('app').controller('AppCtrl', ['$scope', '$timeout', function($scope, $timeout) {
+angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', function($scope, $timeout, appConfig) {
 
   $scope.view = {
     fieldState: [],
@@ -122,9 +78,9 @@ angular.module('app').controller('AppCtrl', ['$scope', '$timeout', function($sco
 
   var convertPapaToDyGraph = function(data) {
     // strip out the rows (meta data) from header
-    data.splice(0, HEADER_SKIPPED_ROWS);
+    data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
     // use the last row in the dataset to determine the data types
-    var map = generateFieldMap(data[data.length - 1], EXCLUDE_FIELDS);
+    var map = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
     if (map === null) {
       handleError("Failed to parse the uploaded CSV file!", "danger");
       return null;
@@ -151,7 +107,7 @@ angular.module('app').controller('AppCtrl', ['$scope', '$timeout', function($sco
         } else { // process other data (non-date) columns
           // FIXME: this is an OPF "bug", should be discussed upstream
           if (fieldValue === "None") {
-            fieldValue = NONE_VALUE_REPLACEMENT;
+            fieldValue = appConfig.NONE_VALUE_REPLACEMENT;
           }
         }
         arr.push(fieldValue);
@@ -299,18 +255,18 @@ angular.module('app').controller('AppCtrl', ['$scope', '$timeout', function($sco
   // return: matrix with numeric columns
   // TIMESTAMP is always the 1st column.
   var generateFieldMap = function(row, excludes) {
-    if (!row.hasOwnProperty(TIMESTAMP)) {
+    if (!row.hasOwnProperty(appConfig.TIMESTAMP)) {
       handleError("No timestamp field was found", "warning");
       return null;
     }
     // add all numeric fields not in excludes
     angular.forEach(row, function(value, key) {
-      if (typeof(value) === "number" && excludes.indexOf(key) === -1 && key !== TIMESTAMP) {
+      if (typeof(value) === "number" && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
         loadedFields.push(key);
       }
     });
     // timestamp assumed to be at the beginning of the array
-    loadedFields.unshift(TIMESTAMP);
+    loadedFields.unshift(appConfig.TIMESTAMP);
     return loadedFields;
   };
 
@@ -344,7 +300,7 @@ angular.module('app').controller('AppCtrl', ['$scope', '$timeout', function($sco
     $scope.view.dataField = null;
     var counter = 0;
     for (var i = 0; i < renderedFields.length; i++) {
-      if (renderedFields[i] !== TIMESTAMP) {
+      if (renderedFields[i] !== appConfig.TIMESTAMP) {
         $scope.view.fieldState.push({
           name: renderedFields[i],
           id: counter,
@@ -356,7 +312,7 @@ angular.module('app').controller('AppCtrl', ['$scope', '$timeout', function($sco
         counter++;
       }
     }
-    guessDataField(POSSIBLE_OPF_DATA_FIELDS);
+    guessDataField(appConfig.POSSIBLE_OPF_DATA_FIELDS);
     $scope.view.graph = new Dygraph(
       div,
       renderedCSV, {
@@ -380,7 +336,7 @@ angular.module('app').controller('AppCtrl', ['$scope', '$timeout', function($sco
         },
         // zoom functionality - toggle the 2 options in ZOOM
         animatedZooms: true,
-        showRangeSelector: ZOOM === "RangeSelector",
+        showRangeSelector: appConfig.ZOOM === "RangeSelector",
         highlightCallback: function(e, x, points, row, seriesName) { // ZOOM === "HighlightSelector"
           for (var p = 0; p < points.length; p++) {
             updateValue(points[p].name, points[p].yval);
@@ -404,43 +360,3 @@ angular.module('app').controller('AppCtrl', ['$scope', '$timeout', function($sco
   });
 
 }]);
-
-angular.module('app').directive('fileUploadChange', function() {
-  return {
-    restrict: 'A',
-    link: function(scope, element, attrs) {
-      var onChangeHandler = scope.$eval(attrs.fileUploadChange);
-      element.bind('change', onChangeHandler);
-      scope.$on("$destroy", function() {
-        element.unbind();
-      });
-    }
-  };
-});
-
-angular.module('app').directive('opfField', function() {
-  return {
-    restrict: 'A',
-    scope: false,
-    template: '<td><input type="checkbox" ng-disabled="field.id === view.dataField || view.dataField === null" ng-model="field.normalized"></td>' +
-      '<td><input type="radio" ng-disabled="field.normalized" ng-model="view.dataField" ng-value="{{field.id}}"></td>',
-    link: function(scope, element, attrs) {
-      var watchers = {};
-      watchers.normalized = scope.$watch('field.normalized', function(newValue, oldValue) {
-        if (newValue) {
-          scope.normalizeField(scope.field.id);
-        } else {
-          scope.denormalizeField(scope.field.id);
-        }
-      });
-      watchers.isData = scope.$watch('view.dataField', function() {
-        scope.renormalize();
-      });
-      scope.$on("$destroy", function() {
-        angular.forEach(watchers, function(watcher) {
-          watcher();
-        });
-      });
-    }
-  };
-});
