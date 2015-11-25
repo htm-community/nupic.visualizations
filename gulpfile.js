@@ -7,7 +7,7 @@ var less = require('gulp-less');
 var path = require('path');
 var minifyCSS = require('gulp-minify-css');
 var del = require('del');
-// var jasmine = require('gulp-jasmine');
+var karmaServer = require('karma').Server;
 
 var appName = "nupic-visualizations";
 
@@ -23,9 +23,9 @@ var externalJS = [
   "client/bower_components/papaparse/papaparse.min.js"
 ];
 
-gulp.task('default', ['build']);
+gulp.task('default', ['test','build']);
 
-gulp.task('build', ['externaljs', 'appjs', 'less', 'static'])
+gulp.task('build', ['externaljs', 'appjs', 'less', 'static']);
 
 gulp.task('clean', function() {
   return del(['build/*']);
@@ -75,6 +75,13 @@ gulp.task('assets', ['clean'], function(){
 gulp.task('fonts', ['clean'], function(){
   return gulp.src(fonts)
     .pipe(gulp.dest('build/fonts'))
+});
+
+gulp.task('test', function (done) {
+  new karmaServer({
+    configFile: __dirname + '/client/test/karma.conf.js',
+    singleRun: true
+  }, done).start();
 });
 
 // add banner?
