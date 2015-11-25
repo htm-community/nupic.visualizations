@@ -9,7 +9,7 @@ angular.module('app').directive('normalizeFields', function() {
       watchers.normalized = scope.$watch('field.normalized', function(newValue, oldValue) {
         if (newValue) {
           scope.normalizeField(scope.field.id);
-        } else {
+        } else if (!newValue && newValue !== oldValue) {
           scope.denormalizeField(scope.field.id);
         }
       });
