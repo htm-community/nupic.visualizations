@@ -59,7 +59,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       // loop through existing errors by 'message'
       errs = $scope.view.errors;
       for (var i = 0; i < errs.length; i++) {
-        if (errs[i]["message"] === error) { // not unique
+        if (errs.i.message === error) { // not unique
           return;
         }
       }
@@ -160,7 +160,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     for (var t = 0; t < args.length; t++) {
       args[t] = parseInt(args[t]);
     }
-    numDate = new(Function.prototype.bind.apply(Date, [null].concat(args)));
+    numDate = new Function.prototype.bind.apply(Date, [null].concat(args));
     if (numDate.toString() === "Invalid Date") {
       handleError("The timestamp appears to be invalid.", "warning", true);
       return null;
