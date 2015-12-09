@@ -82,7 +82,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     // strip out the rows (meta data) from header
     data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
     // use the last row in the dataset to determine the data types
-    var map = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
+    var lastRow = data[data.length - 1];
+    loadedFields = generateFieldMap(lastRow, appConfig.EXCLUDE_FIELDS);
     for (var rowId = 0; rowId < data.length; rowId++) {
       var arr = [];
       for (var colId = 0; colId < loadedFields.length; colId++) {
@@ -90,6 +91,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
         var fieldValue = null;
         if (fieldName === appConfig.TIMESTAMP_FALLBACK) { // no timestamp column, artificially add iterations
           fieldValue = rowId;
+          continue;
         } else {
           fieldValue = data[rowId][fieldName]; // read field's value
         }
@@ -260,7 +262,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     }
     // add all numeric fields not in excludes
     angular.forEach(row, function(value, key) {
-      if (typeof(value) === "number" && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
+      if (typeof(value) === "number" && excludes.indexOf(key) === -1 && key !== usedTimestamp) {
         loadedFields.push(key);
       }
     });
@@ -299,9 +301,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     $scope.view.dataField = null;
     var counter = 0;
     for (var i = 0; i < renderedFields.length; i++) {
-      if (renderedFields[i] !== appConfig.TIMESTAMP) {
+      var fName = renderedFields[i];
+      if (fName !== appConfig.TIMESTAMP || fName !== appConfig.TIMESTAMP_FALLBACK) {
         $scope.view.fieldState.push({
-          name: renderedFields[i],
+          name: fName,
           id: counter,
           visible: true,
           normalized: false,
