@@ -40,6 +40,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       skipEmptyLines: true,
       header: true,
       dynamicTyping: true,
+      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
+      comments: "#",
+      //fastMode: true, // automatically enabled if no " appear
+      chunk: function(results, parser) { //TODO use chunk instead?
+        console.log("Row data:", results.data);
+	console.log("Row errors:", results.errors);
+      },
       complete: function(results) {
         convertPapaToDyGraph(results.data);
         $scope.view.canRender = (loadedCSV.length > 0) ? true : false;
