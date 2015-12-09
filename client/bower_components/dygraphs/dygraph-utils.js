@@ -11,8 +11,9 @@
  * search) and generic DOM-manipulation functions.
  */
 
-/*jshint globalstrict: true */
-/*global Dygraph:false, G_vmlCanvasManager:false, Node:false, printStackTrace: false */
+(function() {
+
+/*global Dygraph:false, G_vmlCanvasManager:false, Node:false */
 "use strict";
 
 Dygraph.LOG_SCALE = 10;
@@ -27,123 +28,12 @@ Dygraph.log10 = function(x) {
   return Math.log(x) / Dygraph.LN_TEN;
 };
 
-// Various logging levels.
-Dygraph.DEBUG = 1;
-Dygraph.INFO = 2;
-Dygraph.WARNING = 3;
-Dygraph.ERROR = 3;
-
-// Set this to log stack traces on warnings, etc.
-// This requires stacktrace.js, which is up to you to provide.
-// A copy can be found in the dygraphs repo, or at
-// https://github.com/eriwen/javascript-stacktrace
-Dygraph.LOG_STACK_TRACES = false;
-
 /** A dotted line stroke pattern. */
 Dygraph.DOTTED_LINE = [2, 2];
 /** A dashed line stroke pattern. */
 Dygraph.DASHED_LINE = [7, 3];
 /** A dot dash stroke pattern. */
 Dygraph.DOT_DASH_LINE = [7, 2, 2, 2];
-
-/**
- * Log an error on the JS console at the given severity.
- * @param {number} severity One of Dygraph.{DEBUG,INFO,WARNING,ERROR}
- * @param {string} message The message to log.
- * @private
- */
-Dygraph.log = function(severity, message) {
-  var st;
-  if (typeof(printStackTrace) != 'undefined') {
-    try {
-      // Remove uninteresting bits: logging functions and paths.
-      st = printStackTrace({guess:false});
-      while (st[0].indexOf("stacktrace") != -1) {
-        st.splice(0, 1);
-      }
-
-      st.splice(0, 2);
-      for (var i = 0; i < st.length; i++) {
-        st[i] = st[i].replace(/\([^)]*\/(.*)\)/, '@$1')
-            .replace(/\@.*\/([^\/]*)/, '@$1')
-            .replace('[object Object].', '');
-      }
-      var top_msg = st.splice(0, 1)[0];
-      message += ' (' + top_msg.replace(/^.*@ ?/, '') + ')';
-    } catch(e) {
-      // Oh well, it was worth a shot!
-    }
-  }
-
-  if (typeof(window.console) != 'undefined') {
-    // In older versions of Firefox, only console.log is defined.
-    var console = window.console;
-    var log = function(console, method, msg) {
-      if (method && typeof(method) == 'function') {
-        method.call(console, msg);
-      } else {
-        console.log(msg);
-      }
-    };
-
-    switch (severity) {
-      case Dygraph.DEBUG:
-        log(console, console.debug, 'dygraphs: ' + message);
-        break;
-      case Dygraph.INFO:
-        log(console, console.info, 'dygraphs: ' + message);
-        break;
-      case Dygraph.WARNING:
-        log(console, console.warn, 'dygraphs: ' + message);
-        break;
-      case Dygraph.ERROR:
-        log(console, console.error, 'dygraphs: ' + message);
-        break;
-    }
-  }
-
-  if (Dygraph.LOG_STACK_TRACES) {
-    window.console.log(st.join('\n'));
-  }
-};
-
-/**
- * @param {string} message
- * @private
- */
-Dygraph.info = function(message) {
-  Dygraph.log(Dygraph.INFO, message);
-};
-/**
- * @param {string} message
- * @private
- */
-Dygraph.prototype.info = Dygraph.info;
-
-/**
- * @param {string} message
- * @private
- */
-Dygraph.warn = function(message) {
-  Dygraph.log(Dygraph.WARNING, message);
-};
-/**
- * @param {string} message
- * @private
- */
-Dygraph.prototype.warn = Dygraph.warn;
-
-/**
- * @param {string} message
- */
-Dygraph.error = function(message) {
-  Dygraph.log(Dygraph.ERROR, message);
-};
-/**
- * @param {string} message
- * @private
- */
-Dygraph.prototype.error = Dygraph.error;
 
 /**
  * Return the 2d context for a dygraph canvas.
@@ -167,9 +57,9 @@ Dygraph.getContext = function(canvas) {
 /**
  * Add an event handler. This smooths a difference between IE and the rest of
  * the world.
- * @param { !Element } elem The element to add the event to.
- * @param { string } type The type of the event, e.g. 'click' or 'mousemove'.
- * @param { function(Event):(boolean|undefined) } fn The function to call
+ * @param {!Node} elem The element to add the event to.
+ * @param {string} type The type of the event, e.g. 'click' or 'mousemove'.
+ * @param {function(Event):(boolean|undefined)} fn The function to call
  *     on the event. The function takes one parameter: the event object.
  * @private
  */
@@ -186,9 +76,9 @@ Dygraph.addEvent = function addEvent(elem, type, fn) {
  * Add an event handler. This event handler is kept until the graph is
  * destroyed with a call to graph.destroy().
  *
- * @param { !Element } elem The element to add the event to.
- * @param { string } type The type of the event, e.g. 'click' or 'mousemove'.
- * @param { function(Event):(boolean|undefined) } fn The function to call
+ * @param {!Node} elem The element to add the event to.
+ * @param {string} type The type of the event, e.g. 'click' or 'mousemove'.
+ * @param {function(Event):(boolean|undefined)} fn The function to call
  *     on the event. The function takes one parameter: the event object.
  * @private
  */
@@ -200,7 +90,7 @@ Dygraph.prototype.addAndTrackEvent = function(elem, type, fn) {
 /**
  * Remove an event handler. This smooths a difference between IE and the rest
  * of the world.
- * @param {!Element} elem The element to add the event to.
+ * @param {!Node} elem The element to remove the event from.
  * @param {string} type The type of the event, e.g. 'click' or 'mousemove'.
  * @param {function(Event):(boolean|undefined)} fn The function to call
  *     on the event. The function takes one parameter: the event object.
@@ -236,7 +126,7 @@ Dygraph.prototype.removeTrackedEvents_ = function() {
  * browser actions, e.g. highlighting text on a double-click.
  * Based on the article at
  * http://www.switchonthecode.com/tutorials/javascript-tutorial-the-scroll-wheel
- * @param { !Event } e The event whose normal behavior should be canceled.
+ * @param {!Event} e The event whose normal behavior should be canceled.
  * @private
  */
 Dygraph.cancelEvent = function(e) {
@@ -299,76 +189,47 @@ Dygraph.hsvToRGB = function (hue, saturation, value) {
 // ... and modifications to support scrolling divs.
 
 /**
- * Find the x-coordinate of the supplied object relative to the left side
- * of the page.
+ * Find the coordinates of an object relative to the top left of the page.
+ *
  * TODO(danvk): change obj type from Node -&gt; !Node
  * @param {Node} obj
- * @return {number}
+ * @return {{x:number,y:number}}
  * @private
  */
-Dygraph.findPosX = function(obj) {
-  var curleft = 0;
-  if(obj.offsetParent) {
+Dygraph.findPos = function(obj) {
+  var curleft = 0, curtop = 0;
+  if (obj.offsetParent) {
     var copyObj = obj;
-    while(1) {
+    while (1) {
       // NOTE: the if statement here is for IE8.
-      var borderLeft = "0";
+      var borderLeft = "0", borderTop = "0";
       if (window.getComputedStyle) {
-        borderLeft = window.getComputedStyle(copyObj, null).borderLeft || "0";
+        var computedStyle = window.getComputedStyle(copyObj, null);
+        borderLeft = computedStyle.borderLeft || "0";
+        borderTop = computedStyle.borderTop || "0";
       }
       curleft += parseInt(borderLeft, 10) ;
-      curleft += copyObj.offsetLeft;
-      if(!copyObj.offsetParent) {
-        break;
-      }
-      copyObj = copyObj.offsetParent;
-    }
-  } else if(obj.x) {
-    curleft += obj.x;
-  }
-  // This handles the case where the object is inside a scrolled div.
-  while(obj && obj != document.body) {
-    curleft -= obj.scrollLeft;
-    obj = obj.parentNode;
-  }
-  return curleft;
-};
-
-/**
- * Find the y-coordinate of the supplied object relative to the top of the
- * page.
- * TODO(danvk): change obj type from Node -&gt; !Node
- * TODO(danvk): consolidate with findPosX and return an {x, y} object.
- * @param {Node} obj
- * @return {number}
- * @private
- */
-Dygraph.findPosY = function(obj) {
-  var curtop = 0;
-  if(obj.offsetParent) {
-    var copyObj = obj;
-    while(1) {
-      // NOTE: the if statement here is for IE8.
-      var borderTop = "0";
-      if (window.getComputedStyle) {
-        borderTop = window.getComputedStyle(copyObj, null).borderTop || "0";
-      }
       curtop += parseInt(borderTop, 10) ;
+      curleft += copyObj.offsetLeft;
       curtop += copyObj.offsetTop;
-      if(!copyObj.offsetParent) {
+      if (!copyObj.offsetParent) {
         break;
       }
       copyObj = copyObj.offsetParent;
     }
-  } else if(obj.y) {
-    curtop += obj.y;
+  } else {
+    // TODO(danvk): why would obj ever have these properties?
+    if (obj.x) curleft += obj.x;
+    if (obj.y) curtop += obj.y;
   }
+
   // This handles the case where the object is inside a scrolled div.
-  while(obj && obj != document.body) {
+  while (obj && obj != document.body) {
+    curleft -= obj.scrollLeft;
     curtop -= obj.scrollTop;
     obj = obj.parentNode;
   }
-  return curtop;
+  return {x: curleft, y: curtop};
 };
 
 /**
@@ -412,6 +273,28 @@ Dygraph.pageY = function(e) {
 };
 
 /**
+ * Converts page the x-coordinate of the event to pixel x-coordinates on the
+ * canvas (i.e. DOM Coords).
+ * @param {!Event} e Drag event.
+ * @param {!DygraphInteractionContext} context Interaction context object.
+ * @return {number} The amount by which the drag has moved to the right.
+ */
+Dygraph.dragGetX_ = function(e, context) {
+  return Dygraph.pageX(e) - context.px;
+};
+
+/**
+ * Converts page the y-coordinate of the event to pixel y-coordinates on the
+ * canvas (i.e. DOM Coords).
+ * @param {!Event} e Drag event.
+ * @param {!DygraphInteractionContext} context Interaction context object.
+ * @return {number} The amount by which the drag has moved down.
+ */
+Dygraph.dragGetY_ = function(e, context) {
+  return Dygraph.pageY(e) - context.py;
+};
+
+/**
  * This returns true unless the parameter is 0, null, undefined or NaN.
  * TODO(danvk): rename this function to something like 'isNonZeroNan'.
  *
@@ -424,18 +307,18 @@ Dygraph.isOK = function(x) {
 };
 
 /**
- * @param { {x:?number,y:?number,yval:?number} } p The point to consider, valid
+ * @param {{x:?number,y:?number,yval:?number}} p The point to consider, valid
  *     points are {x, y} objects
- * @param { boolean } allowNaNY Treat point with y=NaN as valid
- * @return { boolean } Whether the point has numeric x and y.
+ * @param {boolean=} opt_allowNaNY Treat point with y=NaN as valid
+ * @return {boolean} Whether the point has numeric x and y.
  * @private
  */
-Dygraph.isValidPoint = function(p, allowNaNY) {
+Dygraph.isValidPoint = function(p, opt_allowNaNY) {
   if (!p) return false;  // null or undefined object
   if (p.yval === null) return false;  // missing point
   if (p.x === null || p.x === undefined) return false;
   if (p.y === null || p.y === undefined) return false;
-  if (isNaN(p.x) || (!allowNaNY && isNaN(p.y))) return false;
+  if (isNaN(p.x) || (!opt_allowNaNY && isNaN(p.y))) return false;
   return true;
 };
 
@@ -492,22 +375,90 @@ Dygraph.zeropad = function(x) {
 };
 
 /**
+ * Date accessors to get the parts of a calendar date (year, month, 
+ * day, hour, minute, second and millisecond) according to local time,
+ * and factory method to call the Date constructor with an array of arguments.
+ */
+Dygraph.DateAccessorsLocal = {
+  getFullYear:     function(d) {return d.getFullYear();},
+  getMonth:        function(d) {return d.getMonth();},
+  getDate:         function(d) {return d.getDate();},
+  getHours:        function(d) {return d.getHours();},
+  getMinutes:      function(d) {return d.getMinutes();},
+  getSeconds:      function(d) {return d.getSeconds();},
+  getMilliseconds: function(d) {return d.getMilliseconds();},
+  getDay:          function(d) {return d.getDay();},
+  makeDate:        function(y, m, d, hh, mm, ss, ms) {
+    return new Date(y, m, d, hh, mm, ss, ms);
+  }
+};
+
+/**
+ * Date accessors to get the parts of a calendar date (year, month, 
+ * day of month, hour, minute, second and millisecond) according to UTC time,
+ * and factory method to call the Date constructor with an array of arguments.
+ */
+Dygraph.DateAccessorsUTC = {
+  getFullYear:     function(d) {return d.getUTCFullYear();},
+  getMonth:        function(d) {return d.getUTCMonth();},
+  getDate:         function(d) {return d.getUTCDate();},
+  getHours:        function(d) {return d.getUTCHours();},
+  getMinutes:      function(d) {return d.getUTCMinutes();},
+  getSeconds:      function(d) {return d.getUTCSeconds();},
+  getMilliseconds: function(d) {return d.getUTCMilliseconds();},
+  getDay:          function(d) {return d.getUTCDay();},
+  makeDate:        function(y, m, d, hh, mm, ss, ms) {
+    return new Date(Date.UTC(y, m, d, hh, mm, ss, ms));
+  }
+};
+
+/**
  * Return a string version of the hours, minutes and seconds portion of a date.
- *
- * @param {number} date The JavaScript date (ms since epoch)
- * @return {string} A time of the form "HH:MM:SS"
+ * @param {number} hh The hours (from 0-23)
+ * @param {number} mm The minutes (from 0-59)
+ * @param {number} ss The seconds (from 0-59)
+ * @return {string} A time of the form "HH:MM" or "HH:MM:SS"
  * @private
  */
-Dygraph.hmsString_ = function(date) {
+Dygraph.hmsString_ = function(hh, mm, ss) {
   var zeropad = Dygraph.zeropad;
-  var d = new Date(date);
-  if (d.getSeconds()) {
-    return zeropad(d.getHours()) + ":" +
-           zeropad(d.getMinutes()) + ":" +
-           zeropad(d.getSeconds());
-  } else {
-    return zeropad(d.getHours()) + ":" + zeropad(d.getMinutes());
+  var ret = zeropad(hh) + ":" + zeropad(mm);
+  if (ss) {
+    ret += ":" + zeropad(ss);
   }
+  return ret;
+};
+
+/**
+ * Convert a JS date (millis since epoch) to a formatted string.
+ * @param {number} time The JavaScript time value (ms since epoch)
+ * @param {boolean} utc Wether output UTC or local time
+ * @return {string} A date of one of these forms:
+ *     "YYYY/MM/DD", "YYYY/MM/DD HH:MM" or "YYYY/MM/DD HH:MM:SS"
+ * @private
+ */
+Dygraph.dateString_ = function(time, utc) {
+  var zeropad = Dygraph.zeropad;
+  var accessors = utc ? Dygraph.DateAccessorsUTC : Dygraph.DateAccessorsLocal;
+  var date = new Date(time);
+  var y = accessors.getFullYear(date);
+  var m = accessors.getMonth(date);
+  var d = accessors.getDate(date);
+  var hh = accessors.getHours(date);
+  var mm = accessors.getMinutes(date);
+  var ss = accessors.getSeconds(date);
+  // Get a year string:
+  var year = "" + y;
+  // Get a 0 padded month string
+  var month = zeropad(m + 1);  //months are 0-offset, sigh
+  // Get a 0 padded day string
+  var day = zeropad(d);
+  var frac = hh * 3600 + mm * 60 + ss;
+  var ret = year + "/" + month + "/" + day;
+  if (frac) {
+    ret += " " + Dygraph.hmsString_(hh, mm, ss);
+  }
+  return ret;
 };
 
 /**
@@ -620,7 +571,7 @@ Dygraph.dateParser = function(dateStr) {
   }
 
   if (!d || isNaN(d)) {
-    Dygraph.error("Couldn't parse " + dateStr + " as a date");
+    console.error("Couldn't parse " + dateStr + " as a date");
   }
   return d;
 };
@@ -698,7 +649,7 @@ Dygraph.updateDeep = function (self, o) {
 };
 
 /**
- * @param {Object} o
+ * @param {*} o
  * @return {boolean}
  * @private
  */
@@ -765,6 +716,37 @@ Dygraph.createCanvas = function() {
   }
 
   return canvas;
+};
+
+/**
+ * Returns the context's pixel ratio, which is the ratio between the device
+ * pixel ratio and the backing store ratio. Typically this is 1 for conventional
+ * displays, and > 1 for HiDPI displays (such as the Retina MBP).
+ * See http://www.html5rocks.com/en/tutorials/canvas/hidpi/ for more details.
+ *
+ * @param {!CanvasRenderingContext2D} context The canvas's 2d context.
+ * @return {number} The ratio of the device pixel ratio and the backing store
+ * ratio for the specified context.
+ */
+Dygraph.getContextPixelRatio = function(context) {
+  try {
+    var devicePixelRatio = window.devicePixelRatio;
+    var backingStoreRatio = context.webkitBackingStorePixelRatio ||
+                            context.mozBackingStorePixelRatio ||
+                            context.msBackingStorePixelRatio ||
+                            context.oBackingStorePixelRatio ||
+                            context.backingStorePixelRatio || 1;
+    if (devicePixelRatio !== undefined) {
+      return devicePixelRatio / backingStoreRatio;
+    } else {
+      // At least devicePixelRatio must be defined for this ratio to make sense.
+      // We default backingStoreRatio to 1: this does not exist on some browsers
+      // (i.e. desktop Chrome).
+      return 1;
+    }
+  } catch (e) {
+    return 1;
+  }
 };
 
 /**
@@ -913,72 +895,64 @@ Dygraph.repeatAndCleanup = function(repeatFn, maxFrames, framePeriodInMillis,
   })();
 };
 
+// A whitelist of options that do not change pixel positions.
+var pixelSafeOptions = {
+  'annotationClickHandler': true,
+  'annotationDblClickHandler': true,
+  'annotationMouseOutHandler': true,
+  'annotationMouseOverHandler': true,
+  'axisLabelColor': true,
+  'axisLineColor': true,
+  'axisLineWidth': true,
+  'clickCallback': true,
+  'drawCallback': true,
+  'drawHighlightPointCallback': true,
+  'drawPoints': true,
+  'drawPointCallback': true,
+  'drawXGrid': true,
+  'drawYGrid': true,
+  'fillAlpha': true,
+  'gridLineColor': true,
+  'gridLineWidth': true,
+  'hideOverlayOnMouseOut': true,
+  'highlightCallback': true,
+  'highlightCircleSize': true,
+  'interactionModel': true,
+  'isZoomedIgnoreProgrammaticZoom': true,
+  'labelsDiv': true,
+  'labelsDivStyles': true,
+  'labelsDivWidth': true,
+  'labelsKMB': true,
+  'labelsKMG2': true,
+  'labelsSeparateLines': true,
+  'labelsShowZeroValues': true,
+  'legend': true,
+  'panEdgeFraction': true,
+  'pixelsPerYLabel': true,
+  'pointClickCallback': true,
+  'pointSize': true,
+  'rangeSelectorPlotFillColor': true,
+  'rangeSelectorPlotStrokeColor': true,
+  'showLabelsOnHighlight': true,
+  'showRoller': true,
+  'strokeWidth': true,
+  'underlayCallback': true,
+  'unhighlightCallback': true,
+  'zoomCallback': true
+};
+
 /**
  * This function will scan the option list and determine if they
  * require us to recalculate the pixel positions of each point.
+ * TODO: move this into dygraph-options.js
  * @param {!Array.<string>} labels a list of options to check.
  * @param {!Object} attrs
  * @return {boolean} true if the graph needs new points else false.
  * @private
  */
 Dygraph.isPixelChangingOptionList = function(labels, attrs) {
-  // A whitelist of options that do not change pixel positions.
-  var pixelSafeOptions = {
-    'annotationClickHandler': true,
-    'annotationDblClickHandler': true,
-    'annotationMouseOutHandler': true,
-    'annotationMouseOverHandler': true,
-    'axisLabelColor': true,
-    'axisLineColor': true,
-    'axisLineWidth': true,
-    'clickCallback': true,
-    'digitsAfterDecimal': true,
-    'drawCallback': true,
-    'drawHighlightPointCallback': true,
-    'drawPoints': true,
-    'drawPointCallback': true,
-    'drawXGrid': true,
-    'drawYGrid': true,
-    'fillAlpha': true,
-    'gridLineColor': true,
-    'gridLineWidth': true,
-    'hideOverlayOnMouseOut': true,
-    'highlightCallback': true,
-    'highlightCircleSize': true,
-    'interactionModel': true,
-    'isZoomedIgnoreProgrammaticZoom': true,
-    'labelsDiv': true,
-    'labelsDivStyles': true,
-    'labelsDivWidth': true,
-    'labelsKMB': true,
-    'labelsKMG2': true,
-    'labelsSeparateLines': true,
-    'labelsShowZeroValues': true,
-    'legend': true,
-    'maxNumberWidth': true,
-    'panEdgeFraction': true,
-    'pixelsPerYLabel': true,
-    'pointClickCallback': true,
-    'pointSize': true,
-    'rangeSelectorPlotFillColor': true,
-    'rangeSelectorPlotStrokeColor': true,
-    'showLabelsOnHighlight': true,
-    'showRoller': true,
-    'sigFigs': true,
-    'strokeWidth': true,
-    'underlayCallback': true,
-    'unhighlightCallback': true,
-    'xAxisLabelFormatter': true,
-    'xTicker': true,
-    'xValueFormatter': true,
-    'yAxisLabelFormatter': true,
-    'yValueFormatter': true,
-    'zoomCallback': true
-  };
-
   // Assume that we do not require new points.
   // This will change to true if we actually do need new points.
-  var requiresNewPoints = false;
 
   // Create a dictionary of series names for faster lookup.
   // If there are no labels, then the dictionary stays empty.
@@ -989,114 +963,44 @@ Dygraph.isPixelChangingOptionList = function(labels, attrs) {
     }
   }
 
-  // Iterate through the list of updated options.
-  for (var property in attrs) {
-    // Break early if we already know we need new points from a previous option.
-    if (requiresNewPoints) {
-      break;
-    }
-    if (attrs.hasOwnProperty(property)) {
-      // Find out of this field is actually a series specific options list.
-      if (seriesNamesDictionary[property]) {
-        // This property value is a list of options for this series.
-        // If any of these sub properties are not pixel safe, set the flag.
-        for (var subProperty in attrs[property]) {
-          // Break early if we already know we need new points from a previous option.
-          if (requiresNewPoints) {
-            break;
-          }
-          if (attrs[property].hasOwnProperty(subProperty) && !pixelSafeOptions[subProperty]) {
-            requiresNewPoints = true;
-          }
-        }
-      // If this was not a series specific option list, check if its a pixel changing property.
-      } else if (!pixelSafeOptions[property]) {
-        requiresNewPoints = true;
+  // Scan through a flat (i.e. non-nested) object of options.
+  // Returns true/false depending on whether new points are needed.
+  var scanFlatOptions = function(options) {
+    for (var property in options) {
+      if (options.hasOwnProperty(property) &&
+          !pixelSafeOptions[property]) {
+        return true;
       }
     }
-  }
-
-  return requiresNewPoints;
-};
-
-/**
- * Compares two arrays to see if they are equal. If either parameter is not an
- * array it will return false. Does a shallow compare
- * Dygraph.compareArrays([[1,2], [3, 4]], [[1,2], [3,4]]) === false.
- * @param {!Array.<T>} array1 first array
- * @param {!Array.<T>} array2 second array
- * @return {boolean} True if both parameters are arrays, and contents are equal.
- * @template T
- */
-Dygraph.compareArrays = function(array1, array2) {
-  if (!Dygraph.isArrayLike(array1) || !Dygraph.isArrayLike(array2)) {
     return false;
-  }
-  if (array1.length !== array2.length) {
-    return false;
-  }
-  for (var i = 0; i < array1.length; i++) {
-    if (array1[i] !== array2[i]) {
-      return false;
+  };
+
+  // Iterate through the list of updated options.
+  for (var property in attrs) {
+    if (!attrs.hasOwnProperty(property)) continue;
+
+    // Find out of this field is actually a series specific options list.
+    if (property == 'highlightSeriesOpts' ||
+        (seriesNamesDictionary[property] && !attrs.series)) {
+      // This property value is a list of options for this series.
+      if (scanFlatOptions(attrs[property])) return true;
+    } else if (property == 'series' || property == 'axes') {
+      // This is twice-nested options list.
+      var perSeries = attrs[property];
+      for (var series in perSeries) {
+        if (perSeries.hasOwnProperty(series) &&
+            scanFlatOptions(perSeries[series])) {
+          return true;
+        }
+      }
+    } else {
+      // If this was not a series specific option list, check if it's a pixel
+      // changing property.
+      if (!pixelSafeOptions[property]) return true;
     }
   }
-  return true;
-};
 
-/**
- * @param {!CanvasRenderingContext2D} ctx the canvas context
- * @param {number} sides the number of sides in the shape.
- * @param {number} radius the radius of the image.
- * @param {number} cx center x coordate
- * @param {number} cy center y coordinate
- * @param {number=} rotationRadians the shift of the initial angle, in radians.
- * @param {number=} delta the angle shift for each line. If missing, creates a
- *     regular polygon.
- * @private
- */
-Dygraph.regularShape_ = function(
-    ctx, sides, radius, cx, cy, rotationRadians, delta) {
-  rotationRadians = rotationRadians || 0;
-  delta = delta || Math.PI * 2 / sides;
-
-  ctx.beginPath();
-  var initialAngle = rotationRadians;
-  var angle = initialAngle;
-
-  var computeCoordinates = function() {
-    var x = cx + (Math.sin(angle) * radius);
-    var y = cy + (-Math.cos(angle) * radius);
-    return [x, y];
-  };
-
-  var initialCoordinates = computeCoordinates();
-  var x = initialCoordinates[0];
-  var y = initialCoordinates[1];
-  ctx.moveTo(x, y);
-
-  for (var idx = 0; idx < sides; idx++) {
-    angle = (idx == sides - 1) ? initialAngle : (angle + delta);
-    var coords = computeCoordinates();
-    ctx.lineTo(coords[0], coords[1]);
-  }
-  ctx.fill();
-  ctx.stroke();
-};
-
-/**
- * TODO(danvk): be more specific on the return type.
- * @param {number} sides
- * @param {number=} rotationRadians
- * @param {number=} delta
- * @return {Function}
- * @private
- */
-Dygraph.shapeFunction_ = function(sides, rotationRadians, delta) {
-  return function(g, name, ctx, cx, cy, color, radius) {
-    ctx.strokeStyle = color;
-    ctx.fillStyle = "white";
-    Dygraph.regularShape_(ctx, sides, radius, cx, cy, rotationRadians, delta);
-  };
+  return false;
 };
 
 Dygraph.Circles = {
@@ -1105,51 +1009,8 @@ Dygraph.Circles = {
     ctx.fillStyle = color;
     ctx.arc(canvasx, canvasy, radius, 0, 2 * Math.PI, false);
     ctx.fill();
-  },
-  TRIANGLE : Dygraph.shapeFunction_(3),
-  SQUARE : Dygraph.shapeFunction_(4, Math.PI / 4),
-  DIAMOND : Dygraph.shapeFunction_(4),
-  PENTAGON : Dygraph.shapeFunction_(5),
-  HEXAGON : Dygraph.shapeFunction_(6),
-  CIRCLE : function(g, name, ctx, cx, cy, color, radius) {
-    ctx.beginPath();
-    ctx.strokeStyle = color;
-    ctx.fillStyle = "white";
-    ctx.arc(cx, cy, radius, 0, 2 * Math.PI, false);
-    ctx.fill();
-    ctx.stroke();
-  },
-  STAR : Dygraph.shapeFunction_(5, 0, 4 * Math.PI / 5),
-  PLUS : function(g, name, ctx, cx, cy, color, radius) {
-    ctx.strokeStyle = color;
-
-    ctx.beginPath();
-    ctx.moveTo(cx + radius, cy);
-    ctx.lineTo(cx - radius, cy);
-    ctx.closePath();
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(cx, cy + radius);
-    ctx.lineTo(cx, cy - radius);
-    ctx.closePath();
-    ctx.stroke();
-  },
-  EX : function(g, name, ctx, cx, cy, color, radius) {
-    ctx.strokeStyle = color;
-
-    ctx.beginPath();
-    ctx.moveTo(cx + radius, cy + radius);
-    ctx.lineTo(cx - radius, cy - radius);
-    ctx.closePath();
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(cx + radius, cy - radius);
-    ctx.lineTo(cx - radius, cy + radius);
-    ctx.closePath();
-    ctx.stroke();
   }
+  // For more shapes, include extras/shapes.js
 };
 
 /**
@@ -1190,8 +1051,9 @@ Dygraph.IFrameTarp.prototype.cover = function() {
   var iframes = document.getElementsByTagName("iframe");
   for (var i = 0; i < iframes.length; i++) {
     var iframe = iframes[i];
-    var x = Dygraph.findPosX(iframe),
-        y = Dygraph.findPosY(iframe),
+    var pos = Dygraph.findPos(iframe),
+        x = pos.x,
+        y = pos.y,
         width = iframe.offsetWidth,
         height = iframe.offsetHeight;
 
@@ -1273,33 +1135,107 @@ Dygraph.pow = function(base, exp) {
   return Math.pow(base, exp);
 };
 
-// For Dygraph.setDateSameTZ, below.
-Dygraph.dateSetters = {
-  ms: Date.prototype.setMilliseconds,
-  s: Date.prototype.setSeconds,
-  m: Date.prototype.setMinutes,
-  h: Date.prototype.setHours
+var RGBA_RE = /^rgba?\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})(?:,\s*([01](?:\.\d+)?))?\)$/;
+
+/**
+ * Helper for Dygraph.toRGB_ which parses strings of the form:
+ * rgb(123, 45, 67)
+ * rgba(123, 45, 67, 0.5)
+ * @return parsed {r,g,b,a?} tuple or null.
+ */
+function parseRGBA(rgbStr) {
+  var bits = RGBA_RE.exec(rgbStr);
+  if (!bits) return null;
+  var r = parseInt(bits[1], 10),
+      g = parseInt(bits[2], 10),
+      b = parseInt(bits[3], 10);
+  if (bits[4]) {
+    return {r: r, g: g, b: b, a: parseFloat(bits[4])};
+  } else {
+    return {r: r, g: g, b: b};
+  }
+}
+
+/**
+ * Converts any valid CSS color (hex, rgb(), named color) to an RGB tuple.
+ *
+ * @param {!string} colorStr Any valid CSS color string.
+ * @return {{r:number,g:number,b:number,a:number?}} Parsed RGB tuple.
+ * @private
+ */
+Dygraph.toRGB_ = function(colorStr) {
+  // Strategy: First try to parse colorStr directly. This is fast & avoids DOM
+  // manipulation.  If that fails (e.g. for named colors like 'red'), then
+  // create a hidden DOM element and parse its computed color.
+  var rgb = parseRGBA(colorStr);
+  if (rgb) return rgb;
+
+  var div = document.createElement('div');
+  div.style.backgroundColor = colorStr;
+  div.style.visibility = 'hidden';
+  document.body.appendChild(div);
+  var rgbStr;
+  if (window.getComputedStyle) {
+    rgbStr = window.getComputedStyle(div, null).backgroundColor;
+  } else {
+    // IE8
+    rgbStr = div.currentStyle.backgroundColor;
+  }
+  document.body.removeChild(div);
+  return parseRGBA(rgbStr);
 };
 
 /**
- * This is like calling d.setSeconds(), d.setMinutes(), etc, except that it
- * adjusts for time zone changes to keep the date/time parts consistent.
- *
- * For example, d.getSeconds(), d.getMinutes() and d.getHours() will all be
- * the same before/after you call setDateSameTZ(d, {ms: 0}). The same is not
- * true if you call d.setMilliseconds(0).
- *
- * @type {function(!Date, Object.<number>)}
+ * Checks whether the browser supports the &lt;canvas&gt; tag.
+ * @param {HTMLCanvasElement=} opt_canvasElement Pass a canvas element as an
+ *     optimization if you have one.
+ * @return {boolean} Whether the browser supports canvas.
  */
-Dygraph.setDateSameTZ = function(d, parts) {
-  var tz = d.getTimezoneOffset();
-  for (var k in parts) {
-    if (!parts.hasOwnProperty(k)) continue;
-    var setter = Dygraph.dateSetters[k];
-    if (!setter) throw "Invalid setter: " + k;
-    setter.call(d, parts[k]);
-    if (d.getTimezoneOffset() != tz) {
-      d.setTime(d.getTime() + (tz - d.getTimezoneOffset()) * 60 * 1000);
-    }
+Dygraph.isCanvasSupported = function(opt_canvasElement) {
+  var canvas;
+  try {
+    canvas = opt_canvasElement || document.createElement("canvas");
+    canvas.getContext("2d");
   }
+  catch (e) {
+    var ie = navigator.appVersion.match(/MSIE (\d\.\d)/);
+    var opera = (navigator.userAgent.toLowerCase().indexOf("opera") != -1);
+    if ((!ie) || (ie[1] < 6) || (opera))
+      return false;
+    return true;
+  }
+  return true;
 };
+
+/**
+ * Parses the value as a floating point number. This is like the parseFloat()
+ * built-in, but with a few differences:
+ * - the empty string is parsed as null, rather than NaN.
+ * - if the string cannot be parsed at all, an error is logged.
+ * If the string can't be parsed, this method returns null.
+ * @param {string} x The string to be parsed
+ * @param {number=} opt_line_no The line number from which the string comes.
+ * @param {string=} opt_line The text of the line from which the string comes.
+ */
+Dygraph.parseFloat_ = function(x, opt_line_no, opt_line) {
+  var val = parseFloat(x);
+  if (!isNaN(val)) return val;
+
+  // Try to figure out what happeend.
+  // If the value is the empty string, parse it as null.
+  if (/^ *$/.test(x)) return null;
+
+  // If it was actually "NaN", return it as NaN.
+  if (/^ *nan *$/i.test(x)) return NaN;
+
+  // Looks like a parsing error.
+  var msg = "Unable to parse '" + x + "' as a number";
+  if (opt_line !== undefined && opt_line_no !== undefined) {
+    msg += " on line " + (1+(opt_line_no||0)) + " ('" + opt_line + "') of CSV.";
+  }
+  console.error(msg);
+
+  return null;
+};
+
+})();
