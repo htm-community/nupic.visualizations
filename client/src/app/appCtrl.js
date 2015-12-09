@@ -52,12 +52,12 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
         // strip out the rows (meta data) from header
         data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
         // use the last row in the dataset to determine the data types
-        var map = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
-        if (map === null) {
+        loadedFields = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
+        if (loadedFields === null) {
           handleError("Failed to parse the uploaded CSV file!", "danger");
           return null;
         }
-        convertPapaToDyGraph(data);
+        convertPapaToDyGraph(data, loadedFields);
         $scope.view.canRender = (loadedCSV.length > 0) ? true : false;
         $scope.$apply();
       },
@@ -94,11 +94,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     $scope.view.errors.splice(id, 1);
   };
 
-  var convertPapaToDyGraph = function(data) {
+  var convertPapaToDyGraph = function(data, header) {
     for (var rowId = 0; rowId < data.length; rowId++) {
       var arr = [];
-      for (var colId = 0; colId < loadedFields.length; colId++) {
-        var fieldValue = data[rowId][loadedFields[colId]]; // numeric
+      for (var colId = 0; colId < header.length; colId++) {
+        var fieldValue = data[rowId][header[colId]]; // numeric
         if (colId === 0) { // this should always be the timestamp. See generateFieldMap
           if (typeof(fieldValue) === "number") {
             date = fieldValue;
@@ -261,15 +261,16 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       return null;
     }
     // add all numeric fields not in excludes
+    var headerFields = [];
     angular.forEach(row, function(value, key) {
       if (typeof(value) === "number" && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
-        loadedFields.push(key);
+        headerFields.push(key);
         console.log(key);
       }
     });
     // timestamp assumed to be at the beginning of the array
-    loadedFields.unshift(appConfig.TIMESTAMP);
-    return loadedFields;
+    headerFields.unshift(appConfig.TIMESTAMP);
+    return headerFields;
   };
 
   $scope.toggleVisibility = function(field) {
