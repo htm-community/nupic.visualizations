@@ -81,7 +81,9 @@ The goals of this project are:
 
 If you are interested in developing, or modifying the code, follow these instructions:
 
-* Install `node` and `npm`. This will vary depending on your OS.
+* Install `node(js) >= 0.10.25` and `npm`. This will vary depending on your OS. <br/>
+> On Ubuntu LTS you need to use newer packages, follow [the nodejs guide](https://github.com/nodejs/node-v0.x-archive/wiki/Installing-Node.js-via-package-manager).
+
 * From the root directory of this project, `npm install`. This will install all of the package dependencies.
 * Make your modifications.
 * When you are ready to perform a build, run `gulp`. This will build the app in the `build` directory. Launch the app as described in the "Launch" section, above.
