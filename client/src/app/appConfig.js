@@ -2,9 +2,9 @@
 angular.module('app').constant('appConfig', {
   // TIMESTAMP:
   // represents the name of the column with timestamp/x-data;
-  // currently such column must be present in the data, and be of ISO Date format.
-  // TODO: allow numeric or missing timestamp column ?
+  // if field timestamp is used, try parsing as data, or numeric, or fallback to iteration. 
   TIMESTAMP : "timestamp",
+  TIMESTAMP_FALLBACK : "__iter__", // no normal column should be named like this!
   // POSSIBLE_OPF_DATA_FIELDS:
   // Is used only in OPF files during CSV parsing, where fields may, or may not be present,
   // depending on the user's Model settings in NuPIC.

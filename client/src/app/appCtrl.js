@@ -83,30 +83,26 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
     // use the last row in the dataset to determine the data types
     var map = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
-    if (map === null) {
-      handleError("Failed to parse the uploaded CSV file!", "danger");
-      return null;
-    }
     for (var rowId = 0; rowId < data.length; rowId++) {
       var arr = [];
       for (var colId = 0; colId < loadedFields.length; colId++) {
-        var fieldValue = data[rowId][loadedFields[colId]]; // numeric
-        if (colId === 0) { // this should always be the timestamp. See generateFieldMap
-          if (typeof(fieldValue) === "number") {
-            date = fieldValue;
-          } else if (typeof(fieldValue) === "string") {
-            date = parseDate(fieldValue);
-          }
-          if (date !== null) { // parsing succeeded, use it
-            fieldValue = date;
-          } else if (date === null && typeof(fieldValue) === "number") {
-            handleError("Parsing timestamp failed, fallback to x-data", "warning", true);
-            // keep fieldValue as is
-          } else {
-            handleError("Parsing timestamp failed & it is non-numeric, fallback to using iteration number", "warning", true);
+        var fieldName = loadedFields[colId];
+        var fieldValue = null;
+        if (fieldName === appConfig.TIMESTAMP_FALLBACK) { // no timestamp column, artificially add iterations
+          fieldValue = rowId;
+        } else {
+          fieldValue = data[rowId][fieldName]; // read field's value
+        }
+        if (fieldName === appConfig.TIMESTAMP) { // dealing with timestamp. See generateFieldMap
+          if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
+            //fieldValue; // keep as is
+          } else if (typeof(fieldValue) === "string" && parseDate(fieldValue) !== null) { // use date string timestamps
+            fieldValue = parseDate(fieldValue);
+          } else { // unparsable timestamp field
+            handleError("Parsing timestamp failed, fallback to using iteration number", "warning", true);
             fieldValue = rowId;
           }
-        } else { // process other data (non-date) columns
+        } else { // process other (non-date) data columns
           // FIXME: this is an OPF "bug", should be discussed upstream
           if (fieldValue === "None") {
             fieldValue = appConfig.NONE_VALUE_REPLACEMENT;
@@ -257,9 +253,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
   // return: matrix with numeric columns
   // TIMESTAMP is always the 1st column.
   var generateFieldMap = function(row, excludes) {
+    var usedTimestamp = appConfig.TIMESTAMP;
     if (!row.hasOwnProperty(appConfig.TIMESTAMP)) {
-      handleError("No timestamp field was found", "warning");
-      return null;
+      handleError("No timestamp field was found, fallback to iterations", "warning");
+      usedTimestamp = appConfig.TIMESTAMP_FALLBACK;
     }
     // add all numeric fields not in excludes
     angular.forEach(row, function(value, key) {
@@ -268,7 +265,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       }
     });
     // timestamp assumed to be at the beginning of the array
-    loadedFields.unshift(appConfig.TIMESTAMP);
+    loadedFields.unshift(usedTimestamp); //append timestamp
     return loadedFields;
   };
 
