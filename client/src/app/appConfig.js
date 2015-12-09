@@ -26,7 +26,7 @@ angular.module('app').constant('appConfig', {
   NONE_VALUE_REPLACEMENT : 0,
   // BUFFER:
   // buffer size used for DyGraph streaming, default 1000
-  BUFFER_SIZE : 1000,
+  BUFFER_SIZE : 10000,
   // SLIDING_WINDOW:
   // True = each batch existing values are dropped, new BUFFER_SIZE is painted. Graph will "move to the right".
   // False = data never dropped, just append. Graph will "shrink". (default)

@@ -47,7 +47,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       step: function(results, parser) { // use step(=row) and not chunk(=bytes), cannot be used in conjunction with complete()
         var data = results.data[0];
         i = i+1;
-        if (i === appConfig.HEADER_SKIPPED_ROWS + 1) {
+        if (i === appConfig.HEADER_SKIPPED_ROWS + 1) { //TODO make this code nicer!
           console.log("numData=", data);
           // use the last row in the dataset to determine the data types
           loadedFields = generateFieldMap(data, appConfig.EXCLUDE_FIELDS);
@@ -65,6 +65,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
           buffer.push(data);
           console.log("buffer");
         }
+      },
+      complete: function(result) {
+          console.log("complete");
+          convertPapaToDyGraph(buffer, loadedFields);
+          $scope.view.canRender = (loadedCSV.length > 0) ? true : false;
+          $scope.$apply();
+          buffer = [];
       },
       error: function(error) {
         handleError(error, "danger");
@@ -277,7 +284,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     angular.forEach(row, function(value, key) {
       if ((typeof(value) === "number" ) && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
         headerFields.push(key);
-        console.log(key);
       }
     });
     // timestamp assumed to be at the beginning of the array
