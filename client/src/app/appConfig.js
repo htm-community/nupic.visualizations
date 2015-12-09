@@ -2,8 +2,7 @@
 angular.module('app').constant('appConfig', {
   // TIMESTAMP:
   // represents the name of the column with timestamp/x-data;
-  // currently such column must be present in the data, and be of ISO Date format.
-  // TODO: allow numeric or missing timestamp column ?
+  // if field timestamp is used, try parsing as data, or numeric, or fallback to iteration. 
   TIMESTAMP : "timestamp",
   // EXCLUDE_FIELDS:
   // used to ignore some fields completely, not showing them as possibilities in graph plots.
