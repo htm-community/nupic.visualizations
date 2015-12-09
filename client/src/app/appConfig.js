@@ -24,4 +24,7 @@ angular.module('app').constant('appConfig', {
   // (has to be determined at the last row), but their first few values are "None".
   // We replace the with this value, defaults to 0.
   NONE_VALUE_REPLACEMENT : 0,
+  // BUFFER:
+  // buffer size used for DyGraph streaming, default 1000
+  BUFFER_SIZE : 1000,
 });

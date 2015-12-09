@@ -14,7 +14,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
   };
 
   var loadedCSV = [],
-    loadedFields = [],
+    loadedFields = [], //=CSV header (parsed)
     renderedCSV,
     renderedFields,
     backupCSV,
@@ -34,9 +34,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
   $scope.uploadFile = function(event) {
     $scope.view.canRender = false;
     $scope.view.loadedFileName = event.target.files[0].name;
-    loadedCSV.length = 0;
-    loadedFields.length = 0;
-    var i = 0;
+    var i = -1;
+    var buffer = [];
+
     Papa.parse(event.target.files[0], {
       skipEmptyLines: true,
       header: true,
@@ -44,28 +44,27 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
       comments: "#",
       //fastMode: true, // automatically enabled if no " appear
-//      chunk: function(results, parser) { //TODO use chunk instead?
-//        console.log("Row data:", results.data);
-//	console.log("Row errors:", results.errors);
- //     },
-      complete: function(results) {
-        var data = results.data;
-        if (i === 0) {
-          console.log("First chunk", data);
-          // Special handling for the first chunk - we need to setup Header
-          // strip out the rows (meta data) from header
-          data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
+      step: function(results, parser) { // use step(=row) and not chunk(=bytes), cannot be used in conjunction with complete()
+        var data = results.data[0];
+        i = i+1;
+        if (i === appConfig.HEADER_SKIPPED_ROWS + 1) {
+          console.log("numData=", data);
           // use the last row in the dataset to determine the data types
-          loadedFields = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
+          loadedFields = generateFieldMap(data, appConfig.EXCLUDE_FIELDS);
           if (loadedFields === null) {
             handleError("Failed to parse the uploaded CSV file!", "danger");
             return null;
           }
+        } else if ((loadedFields.length > 0) && (buffer.length > appConfig.BUFFER_SIZE)) {
+          console.log("draw");
+          convertPapaToDyGraph(buffer, loadedFields);
+          $scope.view.canRender = (loadedCSV.length > 0) ? true : false;
+          $scope.$apply();
+          buffer = [];
+        } else if (loadedFields.length > 0) {
+          buffer.push(data);
+          console.log("buffer");
         }
-        i = i+1;
-        convertPapaToDyGraph(data, loadedFields);
-        $scope.view.canRender = (loadedCSV.length > 0) ? true : false;
-        $scope.$apply();
       },
       error: function(error) {
         handleError(error, "danger");
@@ -262,14 +261,16 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
   // return: matrix with numeric columns
   // TIMESTAMP is always the 1st column.
   var generateFieldMap = function(row, excludes) {
+    console.log("map", row);
     if (!row.hasOwnProperty(appConfig.TIMESTAMP)) {
       handleError("No timestamp field was found", "warning");
+      console.log("null");
       return null;
     }
     // add all numeric fields not in excludes
     var headerFields = [];
     angular.forEach(row, function(value, key) {
-      if (typeof(value) === "number" && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
+      if ((typeof(value) === "number" ) && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
         headerFields.push(key);
         console.log(key);
       }
