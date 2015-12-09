@@ -58,10 +58,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
           }
         } else if ((loadedFields.length > 0) && (buffer.length > appConfig.BUFFER_SIZE)) {
           console.log("draw");
+          parser.pause(); // pause loading Papa
           convertPapaToDyGraph(buffer, loadedFields);
+          //$scope.renderData(); //FIXME how to (re) render the graph?
           $scope.view.canRender = (loadedCSV.length > 0) ? true : false;
           $scope.$apply();
           buffer = [];
+          parser.resume();
         } else if (loadedFields.length > 0) {
           buffer.push(data);
           console.log("buffer");
