@@ -54,6 +54,29 @@ There are demo files in `examples/` for NuPIC OPF, NAB and generic CSV files.
   - View the current value of a series, based on where the cursor is over the graph
   - Normalize any series to a selected reference series. For example, perhaps you want to compare your 'my_data' field to your 'anomaly_score' field, but your 'my_data' series varies between 100 and 10,000 - while your 'anomaly_score' field varies between 0 and 1. With the default settings, your anomaly score variations will be too small to be visible. By clicking on 'Data' for the 'my_data', and then checking the 'Normalize' checkbox for 'anomaly_score', the 'anomaly_score' will be scaled up to a ratio matching that of the 'my_data' field.
 
+## Features
+
+The goals of this project are:
+* nice, convenient & easy to use interactive graph visualizations
+* seamlessly runs everywhere (in web-browser)
+* plot as much as possible - generic CSV
+ * tries to parse timestamp/x-data from many formats
+ * no restrictions on the header format
+ * can plot even non-standart data - strings (planned)
+* NuPIC specific OPF-file plotting
+ * extra work done to parse the OPF and extract the suitable fields
+* graph interaction:
+ * show/hide, higlight a series, get current value under cursor
+ * range select to zoom in/out the graph, pan
+ * quickly export shown subsection of graph as a PNG image or CSV data (planned)
+ * manually annotate selected section with text data (planned)
+* specific functionality for anomaly detection
+ * auto-highlight series over/under a threshold (or other condition) (planned)
+ * rescaling some series to be easily visible with the reference series
+ * with annotated anomalies, compute precision, recall, F-measure (planned)
+* works with quite large data (million poitns) 
+ * support for real-time streaming data sources (planned)
+
 ## Develop
 
 If you are interested in developing, or modifying the code, follow these instructions:
