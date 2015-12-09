@@ -43,10 +43,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
       comments: "#",
       //fastMode: true, // automatically enabled if no " appear
-      chunk: function(results, parser) { //TODO use chunk instead?
-        console.log("Row data:", results.data);
-	console.log("Row errors:", results.errors);
-      },
+//      chunk: function(results, parser) { //TODO use chunk instead?
+//        console.log("Row data:", results.data);
+//	console.log("Row errors:", results.errors);
+ //     },
       complete: function(results) {
         convertPapaToDyGraph(results.data);
         $scope.view.canRender = (loadedCSV.length > 0) ? true : false;
@@ -250,16 +250,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     }
   };
 
-  var guessDataField = function(possibleDataFields) {
-    for (var i = 0; i < $scope.view.fieldState.length; i++) {
-      if (possibleDataFields.indexOf($scope.view.fieldState[i].name) > -1) {
-        $scope.view.dataField = $scope.view.fieldState[i].id;
-        break;
-      }
-    }
-  };
-
-  // say which fields will be plotted (all numeric + guessedDataFields - excluded)
+  // say which fields will be plotted (all numeric - excluded)
   // based on parsing the last (to omit Nones at the start) row of the data.
   // return: matrix with numeric columns
   // TIMESTAMP is always the 1st column.
@@ -321,7 +312,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
         counter++;
       }
     }
-    guessDataField(appConfig.POSSIBLE_OPF_DATA_FIELDS);
     $scope.view.graph = new Dygraph(
       div,
       renderedCSV, {

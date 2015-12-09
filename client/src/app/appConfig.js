@@ -5,16 +5,6 @@ angular.module('app').constant('appConfig', {
   // currently such column must be present in the data, and be of ISO Date format.
   // TODO: allow numeric or missing timestamp column ?
   TIMESTAMP : "timestamp",
-  // POSSIBLE_OPF_DATA_FIELDS:
-  // Is used only in OPF files during CSV parsing, where fields may, or may not be present,
-  // depending on the user's Model settings in NuPIC.
-  // If these fields are present, we'll include them as data fields.
-  // FIXME: is this code (and guessDataFields()) needed? 'multiStepBestPredictions.5' are
-  // plotted even though not in the list.
-  POSSIBLE_OPF_DATA_FIELDS : [
-    "multiStepPredictions.actual",
-    "multiStepBestPredictions.actual"
-  ],
   // EXCLUDE_FIELDS:
   // used to ignore some fields completely, not showing them as possibilities in graph plots.
   EXCLUDE_FIELDS : [],
