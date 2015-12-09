@@ -36,6 +36,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     $scope.view.loadedFileName = event.target.files[0].name;
     loadedCSV.length = 0;
     loadedFields.length = 0;
+    var i = 0;
     Papa.parse(event.target.files[0], {
       skipEmptyLines: true,
       header: true,
@@ -48,15 +49,20 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
 //	console.log("Row errors:", results.errors);
  //     },
       complete: function(results) {
-        data = results.data;
-        // strip out the rows (meta data) from header
-        data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
-        // use the last row in the dataset to determine the data types
-        loadedFields = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
-        if (loadedFields === null) {
-          handleError("Failed to parse the uploaded CSV file!", "danger");
-          return null;
+        var data = results.data;
+        if (i === 0) {
+          console.log("First chunk", data);
+          // Special handling for the first chunk - we need to setup Header
+          // strip out the rows (meta data) from header
+          data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
+          // use the last row in the dataset to determine the data types
+          loadedFields = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
+          if (loadedFields === null) {
+            handleError("Failed to parse the uploaded CSV file!", "danger");
+            return null;
+          }
         }
+        i = i+1;
         convertPapaToDyGraph(data, loadedFields);
         $scope.view.canRender = (loadedCSV.length > 0) ? true : false;
         $scope.$apply();
