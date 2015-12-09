@@ -301,17 +301,18 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     var counter = 0;
     for (var i = 0; i < renderedFields.length; i++) {
       var fName = renderedFields[i];
-      if (fName !== appConfig.TIMESTAMP || fName !== appConfig.TIMESTAMP_FALLBACK) {
-        $scope.view.fieldState.push({
-          name: fName,
-          id: counter,
-          visible: true,
-          normalized: false,
-          value: null,
-          color: "rgb(0,0,0)"
-        });
-        counter++;
+      if (fName === appConfig.TIMESTAMP || fName === appConfig.TIMESTAMP_FALLBACK) {
+        continue;
       }
+      $scope.view.fieldState.push({
+        name: fName,
+        id: counter,
+        visible: true,
+        normalized: false,
+        value: null,
+        color: "rgb(0,0,0)"
+      });
+      counter++;
     }
     guessDataField(appConfig.POSSIBLE_OPF_DATA_FIELDS);
     $scope.view.graph = new Dygraph(
