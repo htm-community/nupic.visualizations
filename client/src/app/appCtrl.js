@@ -257,7 +257,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
   var generateFieldMap = function(row, excludes) {
     var usedTimestamp = appConfig.TIMESTAMP;
     if (!row.hasOwnProperty(appConfig.TIMESTAMP)) {
-      handleError("No timestamp field was found, fallback to iterations", "warning");
+      handleError("No timestamp field was found, using iterations instead", "info");
       usedTimestamp = appConfig.TIMESTAMP_FALLBACK;
     }
     // add all numeric fields not in excludes

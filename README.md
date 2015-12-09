@@ -16,7 +16,7 @@ Work with NuPIC results interactively in a nice web UI. This app is designed to 
 
 * Note that at this time, the app strips out the first two rows of data. This is because the output of the OPF has three header rows. We are working on a way to automatically detect if the second and third rows are data or meta-data, so this does not happen on non-OPF CSV files.
 * Any modern browser with JavaScript
-* Python for running locally
+* Your favorite web server for running locally
 
 ## Launch
 
@@ -32,7 +32,7 @@ Then go the the `build/` directory:
 cd nupic.visualizations/build/
 ```
 
-then, launch a simple Web server:
+If you have Python installed, you can launch a simple Web server with:
 
 ```
 python -m SimpleHTTPServer 8080
