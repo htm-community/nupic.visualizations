@@ -100,6 +100,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
   };
 
   var convertPapaToDyGraph = function(data, header) {
+    // switch between append / sliding window for the new data
+    if (appConfig.SLIDING_WINDOW) {
+      loadedCSV = [];
+    }
+
     for (var rowId = 0; rowId < data.length; rowId++) {
       var arr = [];
       for (var colId = 0; colId < header.length; colId++) {
