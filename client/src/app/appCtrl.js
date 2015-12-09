@@ -91,7 +91,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
         var fieldValue = null;
         if (fieldName === appConfig.TIMESTAMP_FALLBACK) { // no timestamp column, artificially add iterations
           fieldValue = rowId;
-          continue;
         } else {
           fieldValue = data[rowId][fieldName]; // read field's value
         }
