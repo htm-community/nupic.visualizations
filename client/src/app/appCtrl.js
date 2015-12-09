@@ -324,12 +324,12 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
         xlabel: "Time",
         ylabel: "Values",
         strokeWidth: 1,
-/*
-        highlightSeriesOpts: { // series hovered get thicker
-          strokeWidth: 2,
-          strokeBorderWidth: 1,
-          highlightCircleSize: 3
-        },
+// WARNING: this causes huge performance speed penalty!! 
+//        highlightSeriesOpts: { // series hovered get thicker
+//          strokeWidth: 2,
+//          strokeBorderWidth: 1,
+//          highlightCircleSize: 3
+//        },
         // select and copy functionality
         // FIXME: avoid the hardcoded timestamp format
         pointClickCallback: function(e, point) {
@@ -346,7 +346,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
           }
           $scope.$apply();
         },
-*/
         drawCallback: function(graph, is_initial) {
           if (is_initial) {
             setColors(graph.getColors());
