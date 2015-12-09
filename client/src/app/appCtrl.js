@@ -18,7 +18,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     renderedCSV,
     renderedFields,
     backupCSV,
-    timers = {};
+    timers = {},
+    useIterationsForTimestamp = false;
 
   // the "Show/Hide Options" button
   $scope.toggleOptions = function() {
@@ -88,12 +89,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       var arr = [];
       for (var colId = 0; colId < loadedFields.length; colId++) {
         var fieldName = loadedFields[colId];
-        var fieldValue = null;
-        if (fieldName === appConfig.TIMESTAMP_FALLBACK) { // no timestamp column, artificially add iterations
-          fieldValue = rowId;
-        } else {
-          fieldValue = data[rowId][fieldName]; // read field's value
-        }
+        var fieldValue = (useIterationsForTimestamp && fieldName === appConfig.TIMESTAMP) ? rowId : data[rowId][fieldName]; // read field's value
         if (fieldName === appConfig.TIMESTAMP) { // dealing with timestamp. See generateFieldMap
           if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
             //fieldValue; // keep as is
@@ -243,21 +239,20 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
   // say which fields will be plotted (all numeric + guessedDataFields - excluded)
   // based on parsing the last (to omit Nones at the start) row of the data.
   // return: matrix with numeric columns
-  // TIMESTAMP is always the 1st column.
+  // If TIMESTAMP is not present, use iterations instead and set global useIterationsForTimestamp=true
   var generateFieldMap = function(row, excludes) {
-    var usedTimestamp = appConfig.TIMESTAMP;
     if (!row.hasOwnProperty(appConfig.TIMESTAMP)) {
       handleError("No timestamp field was found, using iterations instead", "info");
-      usedTimestamp = appConfig.TIMESTAMP_FALLBACK;
+      useIterationsForTimestamp = true; //global flag
     }
     // add all numeric fields not in excludes
     angular.forEach(row, function(value, key) {
-      if (typeof(value) === "number" && excludes.indexOf(key) === -1 && key !== usedTimestamp) {
+      if (typeof(value) === "number" && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
         loadedFields.push(key);
       }
     });
     // timestamp assumed to be at the beginning of the array
-    loadedFields.unshift(usedTimestamp); //append timestamp
+    loadedFields.unshift(appConfig.TIMESTAMP); //append timestamp
     return loadedFields;
   };
 
@@ -290,9 +285,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     $scope.view.fieldState.length = 0;
     $scope.view.dataField = null;
     var counter = 0;
+    var usedIterations = useIterationsForTimestamp;
     for (var i = 0; i < renderedFields.length; i++) {
       var fName = renderedFields[i];
-      if (fName === appConfig.TIMESTAMP || fName === appConfig.TIMESTAMP_FALLBACK) {
+      if (fName === appConfig.TIMESTAMP || usedIterations) {
+        usedIterations = false;
         continue;
       }
       $scope.view.fieldState.push({

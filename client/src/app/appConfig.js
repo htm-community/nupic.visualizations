@@ -4,7 +4,6 @@ angular.module('app').constant('appConfig', {
   // represents the name of the column with timestamp/x-data;
   // if field timestamp is used, try parsing as data, or numeric, or fallback to iteration. 
   TIMESTAMP : "timestamp",
-  TIMESTAMP_FALLBACK : "__iter__", // no normal column should be named like this!
   // EXCLUDE_FIELDS:
   // used to ignore some fields completely, not showing them as possibilities in graph plots.
   EXCLUDE_FIELDS : [],
