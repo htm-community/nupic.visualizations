@@ -240,15 +240,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     }
   };
 
-  var guessDataField = function(possibleDataFields) {
-    for (var i = 0; i < $scope.view.fieldState.length; i++) {
-      if (possibleDataFields.indexOf($scope.view.fieldState[i].name) > -1) {
-        $scope.view.dataField = $scope.view.fieldState[i].id;
-        break;
-      }
-    }
-  };
-
   // say which fields will be plotted (all numeric + guessedDataFields - excluded)
   // based on parsing the last (to omit Nones at the start) row of the data.
   // return: matrix with numeric columns
@@ -314,7 +305,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       });
       counter++;
     }
-    guessDataField(appConfig.POSSIBLE_OPF_DATA_FIELDS);
     $scope.view.graph = new Dygraph(
       div,
       renderedCSV, {
