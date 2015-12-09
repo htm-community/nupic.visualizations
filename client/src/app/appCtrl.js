@@ -48,7 +48,16 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
 //	console.log("Row errors:", results.errors);
  //     },
       complete: function(results) {
-        convertPapaToDyGraph(results.data);
+        data = results.data;
+        // strip out the rows (meta data) from header
+        data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
+        // use the last row in the dataset to determine the data types
+        var map = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
+        if (map === null) {
+          handleError("Failed to parse the uploaded CSV file!", "danger");
+          return null;
+        }
+        convertPapaToDyGraph(data);
         $scope.view.canRender = (loadedCSV.length > 0) ? true : false;
         $scope.$apply();
       },
@@ -86,14 +95,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
   };
 
   var convertPapaToDyGraph = function(data) {
-    // strip out the rows (meta data) from header
-    data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
-    // use the last row in the dataset to determine the data types
-    var map = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
-    if (map === null) {
-      handleError("Failed to parse the uploaded CSV file!", "danger");
-      return null;
-    }
     for (var rowId = 0; rowId < data.length; rowId++) {
       var arr = [];
       for (var colId = 0; colId < loadedFields.length; colId++) {
@@ -263,6 +264,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     angular.forEach(row, function(value, key) {
       if (typeof(value) === "number" && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
         loadedFields.push(key);
+        console.log(key);
       }
     });
     // timestamp assumed to be at the beginning of the array
