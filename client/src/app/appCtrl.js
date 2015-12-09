@@ -324,6 +324,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
         xlabel: "Time",
         ylabel: "Values",
         strokeWidth: 1,
+/*
         highlightSeriesOpts: { // series hovered get thicker
           strokeWidth: 2,
           strokeBorderWidth: 1,
@@ -345,6 +346,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
           }
           $scope.$apply();
         },
+*/
         drawCallback: function(graph, is_initial) {
           if (is_initial) {
             setColors(graph.getColors());
