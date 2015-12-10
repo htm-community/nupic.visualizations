@@ -22,7 +22,8 @@ Work with NuPIC results interactively in a [nice web UI](https://nupic-visualiza
 
 ### Online
 
-To try this app instantly, head to the online version at [https://nupic-visualizations.firebaseapp.com/](https://nupic-visualizations.firebaseapp.com/) !
+To try this app instantly, head to the online version at [https://nupic-visualizations.firebaseapp.com/](https://nupic-visualizations.firebaseapp.com/) <br/>
+You can use [an OPF file as an example](https://raw.githubusercontent.com/nupic-community/nupic.visualizations/master/examples/OPF/DefaultTask.TemporalAnomaly.predictionLog.csv).
 
 ### Locally 
 
