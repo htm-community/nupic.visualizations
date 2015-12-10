@@ -42,6 +42,10 @@ Open your web browser and go to [http://localhost:8080](http://localhost:8080)
 
 There are demo files in `examples/` for NuPIC OPF, NAB and generic CSV files. 
 
+## Deploy
+
+The `build/` directory contains all the static files needed to deploy this application. You can use any static file hosting service. For example, here are instructions for deploying to [firebase](https://www.firebase.com/docs/hosting/quickstart.html). You can see this sample application deployed at <https://nupic-viz.firebaseapp.com/> via Firebase.
+
 ## Usage
 
  * Select a local file by clicking 'Browse...'
