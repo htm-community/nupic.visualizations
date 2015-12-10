@@ -1,5 +1,5 @@
 {
-  "firebase": "nupic-viz",
+  "firebase": "nupic-visualizations",
   "public": "build",
   "ignore": [
     "firebase.json",
