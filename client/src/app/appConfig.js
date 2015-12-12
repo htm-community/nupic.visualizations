@@ -2,7 +2,7 @@
 angular.module('app').constant('appConfig', {
   // TIMESTAMP:
   // represents the name of the column with timestamp/x-data;
-  // if field timestamp is used, try parsing as data, or numeric, or fallback to iteration. 
+  // if field timestamp is used, try parsing as data, or numeric, or fallback to iteration.
   TIMESTAMP : "timestamp",
   // EXCLUDE_FIELDS:
   // used to ignore some fields completely, not showing them as possibilities in graph plots.
@@ -30,4 +30,10 @@ angular.module('app').constant('appConfig', {
   // True = each batch existing values are dropped, new BUFFER_SIZE is painted. Graph will "move to the right".
   // False = data never dropped, just append. Graph will "shrink". (default)
   SLIDING_WINDOW : false,
+  // LOCAL_CHUNK_SIZE:
+  // size in bytes of each chunk for the data stream, when reading local files
+  LOCAL_CHUNK_SIZE : 65536,
+  // REMOTE_CHUNK_SIZE:
+  // size in bytes of each chunk for the data stream, when reading files over a network. Not currently used.
+  REMOTE_CHUNK_SIZE : 65536
 });
