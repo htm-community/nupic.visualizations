@@ -53,10 +53,6 @@ Open your web browser and go to [http://localhost:8080](http://localhost:8080)
 
 There are demo files in `examples/` for NuPIC OPF, NAB and generic CSV files. 
 
-## Deploy
-
-The `build/` directory contains all the static files needed to deploy this application. You can use any static file hosting service. For example, here are instructions for deploying to [firebase](https://www.firebase.com/docs/hosting/quickstart.html). You can see this sample application deployed at <https://nupic-viz.firebaseapp.com/> via Firebase.
-
 ## Usage
 
  * Select a local file by clicking 'Browse...', this will start rendering a new graph. 
@@ -100,3 +96,7 @@ If you are interested in developing, or modifying the code, follow these instruc
 * From the root directory of this project, `npm install`. This will install all of the package dependencies.
 * Make your modifications.
 * When you are ready to perform a build, run `gulp`. This will build the app in the `build` directory. Launch the app as described in the "Launch" section, above.
+
+### Deploy
+
+The `build/` directory contains all the static files needed to deploy this application. You can use any static file hosting service. For example, here are instructions for deploying to [firebase](https://www.firebase.com/docs/hosting/quickstart.html). You can see this sample application deployed at <https://nupic-visualizations.firebaseapp.com/> via Firebase.
