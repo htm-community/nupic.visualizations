@@ -41,6 +41,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
     Papa.RemoteChunkSize = appConfig.REMOTE_CHUNK_SIZE;
     var firstChunkComplete = false;
+    var iteration = 0;
     Papa.parse(event.target.files[0], {
       skipEmptyLines: true,
       header: true,
@@ -57,7 +58,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
           var arr = [];
           for (var colId = 0; colId < loadedFields.length; colId++) {
             var fieldName = loadedFields[colId];
-            var fieldValue = (useIterationsForTimestamp && fieldName === appConfig.TIMESTAMP) ? rowId : data[rowId][fieldName]; // read field's value
+            var fieldValue = (useIterationsForTimestamp && fieldName === appConfig.TIMESTAMP) ? iteration++ : data[rowId][fieldName]; // read field's value
             if (fieldName === appConfig.TIMESTAMP) { // dealing with timestamp. See generateFieldMap
               if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
                 //fieldValue; // keep as is
@@ -65,7 +66,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
                 fieldValue = parseDate(fieldValue);
               } else { // unparsable timestamp field
                 handleError("Parsing timestamp failed, fallback to using iteration number", "warning", true);
-                fieldValue = rowId;
+                fieldValue = iteration;
               }
             } else { // process other (non-date) data columns
               // FIXME: this is an OPF "bug", should be discussed upstream
