@@ -59,10 +59,8 @@ The `build/` directory contains all the static files needed to deploy this appli
 
 ## Usage
 
- * Select a local file by clicking 'Browse...'
- * If the app was able to parse the file, the 'Render' button will become active.
+ * Select a local file by clicking 'Browse...', this will start rendering a new graph. 
   * You may get warning/error labels, that can be closed.
- * Click the 'Render' button to render the graph.
  * To zoom in on the graph, click and drag with the cursor. To zoom out, double-click. To pan on a zoomed graph, hold the ALT key (on Linux, hold the SHIFT key), while dragging the cursor.
  * The options to the right of the graph allow the user to:
   - Set the visibility of certain series

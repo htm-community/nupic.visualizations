@@ -5,19 +5,15 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
   $scope.view = {
     fieldState: [],
     graph: null,
-    canRender: false,
     dataField: null,
     optionsVisible: true,
     loadedFileName: "",
-    renderedFileName: "",
     errors: []
   };
 
   var loadedCSV = [],
-    loadedFields = [],
-    renderedCSV,
-    renderedFields,
-    backupCSV,
+    loadedFields = [], //=CSV header (parsed)
+    backupCSV = [],
     timers = {},
     useIterationsForTimestamp = false;
 
@@ -33,20 +29,75 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
 
   // read and parse a CSV file
   $scope.uploadFile = function(event) {
+    // reset fields
+    $scope.view.fieldState.length = 0;
+    $scope.view.graph = null;
+    $scope.view.dataField = null;
+    $scope.view.errors.length = 0;
     useIterationsForTimestamp = false;
-    $scope.view.canRender = false;
-    $scope.view.loadedFileName = event.target.files[0].name;
     loadedCSV.length = 0;
     loadedFields.length = 0;
+    $scope.view.loadedFileName = event.target.files[0].name;
+    Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
+    Papa.RemoteChunkSize = appConfig.REMOTE_CHUNK_SIZE;
+    var firstChunkComplete = false;
+    var iteration = 0;
     Papa.parse(event.target.files[0], {
       skipEmptyLines: true,
       header: true,
       dynamicTyping: true,
-      complete: function(results) {
-        convertPapaToDyGraph(results.data);
-        $scope.view.canRender = (loadedCSV.length > 0) ? true : false;
+      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
+      comments: "#",
+      chunk: function(chunk) {
+        var data = chunk.data;
+        if (!firstChunkComplete) {
+          loadedFields = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
+          firstChunkComplete = true;
+        }
+        for (var rowId = 0; rowId < data.length; rowId++) {
+          var arr = [];
+          for (var colId = 0; colId < loadedFields.length; colId++) {
+            var fieldName = loadedFields[colId];
+            var fieldValue = (useIterationsForTimestamp && fieldName === appConfig.TIMESTAMP) ? iteration++ : data[rowId][fieldName]; // read field's value
+            if (fieldName === appConfig.TIMESTAMP) { // dealing with timestamp. See generateFieldMap
+              if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
+                //fieldValue; // keep as is
+              } else if (typeof(fieldValue) === "string" && parseDate(fieldValue) !== null) { // use date string timestamps
+                fieldValue = parseDate(fieldValue);
+              } else { // unparsable timestamp field
+                handleError("Parsing timestamp failed, fallback to using iteration number", "warning", true);
+                fieldValue = iteration;
+              }
+            } else { // process other (non-date) data columns
+              // FIXME: this is an OPF "bug", should be discussed upstream
+              if (fieldValue === "None") {
+                fieldValue = appConfig.NONE_VALUE_REPLACEMENT;
+              }
+            }
+            arr.push(fieldValue);
+          }
+          if (appConfig.SLIDING_WINDOW && loadedCSV.length > appConfig.BUFFER_SIZE) {
+            loadedCSV.shift();
+            backupCSV.shift();
+          }
+          loadedCSV.push(arr);
+          backupCSV.push(angular.extend([], arr));
+        }
+        if ($scope.view.graph === null) {
+          renderGraph();
+        } else {
+          $scope.view.graph.updateOptions({
+            'file': loadedCSV
+          });
+        }
         $scope.$apply();
       },
+      beforeFirstChunk: function(chunk) {
+        var rows = chunk.split(/\r\n|\r|\n/);
+        rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+        return rows.join('\n');
+      },
+      //fastMode: true, // automatically enabled if no " appear
       error: function(error) {
         handleError(error, "danger");
       }
@@ -78,38 +129,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
 
   $scope.clearError = function(id) {
     $scope.view.errors.splice(id, 1);
-  };
-
-  var convertPapaToDyGraph = function(data) {
-    // strip out the rows (meta data) from header
-    data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
-    // use the last row in the dataset to determine the data types
-    var lastRow = data[data.length - 1];
-    loadedFields = generateFieldMap(lastRow, appConfig.EXCLUDE_FIELDS);
-    for (var rowId = 0; rowId < data.length; rowId++) {
-      var arr = [];
-      for (var colId = 0; colId < loadedFields.length; colId++) {
-        var fieldName = loadedFields[colId];
-        var fieldValue = (useIterationsForTimestamp && fieldName === appConfig.TIMESTAMP) ? rowId : data[rowId][fieldName]; // read field's value
-        if (fieldName === appConfig.TIMESTAMP) { // dealing with timestamp. See generateFieldMap
-          if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
-            //fieldValue; // keep as is
-          } else if (typeof(fieldValue) === "string" && parseDate(fieldValue) !== null) { // use date string timestamps
-            fieldValue = parseDate(fieldValue);
-          } else { // unparsable timestamp field
-            handleError("Parsing timestamp failed, fallback to using iteration number", "warning", true);
-            fieldValue = rowId;
-          }
-        } else { // process other (non-date) data columns
-          // FIXME: this is an OPF "bug", should be discussed upstream
-          if (fieldValue === "None") {
-            fieldValue = appConfig.NONE_VALUE_REPLACEMENT;
-          }
-        }
-        arr.push(fieldValue);
-      }
-      loadedCSV.push(arr);
-    }
   };
 
   // parseDate():
@@ -177,31 +196,31 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     // get the data range - min/man
     var dataFieldValues = [];
     var toBeNormalizedValues = [];
-    for (var i = 0; i < renderedCSV.length; i++) {
-      if (typeof renderedCSV[i][dataFieldId] === "number" && typeof renderedCSV[i][fieldId] === "number") {
-        dataFieldValues.push(renderedCSV[i][dataFieldId]);
-        toBeNormalizedValues.push(renderedCSV[i][fieldId]);
+    for (var i = 0; i < loadedCSV.length; i++) {
+      if (typeof loadedCSV[i][dataFieldId] === "number" && typeof loadedCSV[i][fieldId] === "number") {
+        dataFieldValues.push(loadedCSV[i][dataFieldId]);
+        toBeNormalizedValues.push(loadedCSV[i][fieldId]);
       }
     }
     var dataFieldRange = getMinOrMaxOfArray(dataFieldValues, "max") - getMinOrMaxOfArray(dataFieldValues, "min");
     var normalizeFieldRange = getMinOrMaxOfArray(toBeNormalizedValues, "max") - getMinOrMaxOfArray(toBeNormalizedValues, "min");
     var ratio = dataFieldRange / normalizeFieldRange;
     // multiply each anomalyScore by this amount
-    for (var x = 0; x < renderedCSV.length; x++) {
-      renderedCSV[x][fieldId] = parseFloat((renderedCSV[x][fieldId] * ratio).toFixed(10));
+    for (var x = 0; x < loadedCSV.length; x++) {
+      loadedCSV[x][fieldId] = parseFloat((loadedCSV[x][fieldId] * ratio).toFixed(10));
     }
     $scope.view.graph.updateOptions({
-      'file': renderedCSV
+      'file': loadedCSV
     });
   };
 
   $scope.denormalizeField = function(normalizedFieldId) {
     var fieldId = normalizedFieldId + 1;
-    for (var i = 0; i < renderedCSV.length; i++) {
-      renderedCSV[i][fieldId] = backupCSV[i][fieldId];
+    for (var i = 0; i < loadedCSV.length; i++) {
+      loadedCSV[i][fieldId] = backupCSV[i][fieldId];
     }
     $scope.view.graph.updateOptions({
-      'file': renderedCSV
+      'file': loadedCSV
     });
   };
 
@@ -237,7 +256,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     }
   };
 
-  // say which fields will be plotted (all numeric + guessedDataFields - excluded)
+  // say which fields will be plotted (all numeric - excluded)
   // based on parsing the last (to omit Nones at the start) row of the data.
   // return: matrix with numeric columns
   // If TIMESTAMP is not present, use iterations instead and set global useIterationsForTimestamp=true
@@ -247,14 +266,15 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       useIterationsForTimestamp = true; //global flag
     }
     // add all numeric fields not in excludes
+    var headerFields = [];
     angular.forEach(row, function(value, key) {
-      if (typeof(value) === "number" && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
-        loadedFields.push(key);
+      if ((typeof(value) === "number") && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
+        headerFields.push(key);
       }
     });
     // timestamp assumed to be at the beginning of the array
-    loadedFields.unshift(appConfig.TIMESTAMP); //append timestamp
-    return loadedFields;
+    headerFields.unshift(appConfig.TIMESTAMP); //append timestamp as 1st field
+    return headerFields;
   };
 
   $scope.toggleVisibility = function(field) {
@@ -275,20 +295,20 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
   };
 
   // the main "graphics" is rendered here
-  $scope.renderData = function() {
+  var renderGraph = function() {
     var fields = [];
     var div = document.getElementById("dataContainer");
-    renderedCSV = angular.copy(loadedCSV);
-    backupCSV = angular.copy(loadedCSV);
-    renderedFields = angular.copy(loadedFields);
-    $scope.view.renderedFileName = $scope.view.loadedFileName;
+    //renderedCSV = angular.copy(loadedCSV);
+    //backupCSV = angular.copy(loadedCSV);
+    //renderedFields = angular.copy(loadedFields);
+    //$scope.view.renderedFileName = $scope.view.loadedFileName;
     // build field toggle array
     $scope.view.fieldState.length = 0;
     $scope.view.dataField = null;
     var counter = 0;
     var usedIterations = useIterationsForTimestamp;
-    for (var i = 0; i < renderedFields.length; i++) {
-      var fName = renderedFields[i];
+    for (var i = 0; i < loadedFields.length; i++) {
+      var fName = loadedFields[i];
       if (fName === appConfig.TIMESTAMP || usedIterations) {
         usedIterations = false;
         continue;
@@ -305,19 +325,19 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     }
     $scope.view.graph = new Dygraph(
       div,
-      renderedCSV, {
-        labels: renderedFields,
+      loadedCSV, {
+        labels: loadedFields,
         labelsUTC: false, // make timestamp in UTC to have consistent graphs
         showLabelsOnHighlight: false,
         xlabel: "Time",
         ylabel: "Values",
         strokeWidth: 1,
-// WARNING: this causes huge performance speed penalty!!
-//        highlightSeriesOpts: { // series hovered get thicker
-//          strokeWidth: 2,
-//          strokeBorderWidth: 1,
-//          highlightCircleSize: 3
-//        },
+        // WARNING: this causes huge performance speed penalty!!
+        // highlightSeriesOpts: { // series hovered get thicker
+        //   strokeWidth: 2,
+        //   strokeBorderWidth: 1,
+        //   highlightCircleSize: 3
+        // },
         // select and copy functionality
         // FIXME: avoid the hardcoded timestamp format
         pointClickCallback: function(e, point) {
@@ -341,7 +361,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
         }
       }
     );
-    document.getElementById("renderButton").blur();
   };
 
   $scope.$on("$destroy", function() {
