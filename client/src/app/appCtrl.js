@@ -82,6 +82,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
           loadedCSV.push(arr);
           backupCSV.push(angular.extend([], arr));
         }
+        if ($scope.view.graph === null) {
           renderGraph();
         } else {
           $scope.view.graph.updateOptions({
