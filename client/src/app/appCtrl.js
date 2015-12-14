@@ -33,6 +33,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
 
   // read and parse a CSV file
   $scope.uploadFile = function(event) {
+    useIterationsForTimestamp = false;
     $scope.view.canRender = false;
     $scope.view.loadedFileName = event.target.files[0].name;
     var i = -1;
@@ -343,7 +344,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
         xlabel: "Time",
         ylabel: "Values",
         strokeWidth: 1,
-// WARNING: this causes huge performance speed penalty!! 
+// WARNING: this causes huge performance speed penalty!!
 //        highlightSeriesOpts: { // series hovered get thicker
 //          strokeWidth: 2,
 //          strokeBorderWidth: 1,

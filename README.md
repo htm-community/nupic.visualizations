@@ -1,6 +1,8 @@
 # NuPIC Visualizations
 
-Work with NuPIC results interactively in a nice web UI. This app is designed to consume and render CSV files output by NuPIC, but it can read any CSV file with numercical data that has a timestamp as one of its fields.
+[![Join the chat at https://gitter.im/nupic-community/nupic.visualizations](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nupic-community/nupic.visualizations?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
+Work with NuPIC results interactively in a [nice web UI](https://nupic-visualizations.firebaseapp.com/). This app is designed to consume and render CSV files output by NuPIC, but it can read any CSV file with numercical data that has a timestamp as one of its fields.
 
 ![NuPIC Visualizations screenshot](https://raw.githubusercontent.com/wiki/nupic-community/nupic.visualizations/images/nupic_visualizations.png)
 
@@ -19,6 +21,15 @@ Work with NuPIC results interactively in a nice web UI. This app is designed to 
 * Your favorite web server for running locally
 
 ## Launch
+
+### Online
+
+To try this app instantly, head to the online version at [https://nupic-visualizations.firebaseapp.com/](https://nupic-visualizations.firebaseapp.com/) <br/>
+You can use [an OPF file as an example](https://raw.githubusercontent.com/nupic-community/nupic.visualizations/master/examples/OPF/DefaultTask.TemporalAnomaly.predictionLog.csv).
+
+### Locally 
+
+Or you can run locally, without a need for internet connection. 
 
 First, get a copy of this repo, you can download a `ZIP` from Github, or clone:
 
@@ -42,6 +53,10 @@ Open your web browser and go to [http://localhost:8080](http://localhost:8080)
 
 There are demo files in `examples/` for NuPIC OPF, NAB and generic CSV files. 
 
+## Deploy
+
+The `build/` directory contains all the static files needed to deploy this application. You can use any static file hosting service. For example, here are instructions for deploying to [firebase](https://www.firebase.com/docs/hosting/quickstart.html). You can see this sample application deployed at <https://nupic-viz.firebaseapp.com/> via Firebase.
+
 ## Usage
 
  * Select a local file by clicking 'Browse...'
@@ -58,7 +73,7 @@ There are demo files in `examples/` for NuPIC OPF, NAB and generic CSV files.
 
 The goals of this project are:
 * nice, convenient & easy to use interactive graph visualizations
-* seamlessly runs everywhere (in web-browser)
+* seamlessly runs everywhere (in web-browser, or [cloud](https://nupic-visualizations.firebaseapp.com/))
 * plot as much as possible - generic CSV
  * tries to parse timestamp/x-data from many formats
  * no restrictions on the header format
