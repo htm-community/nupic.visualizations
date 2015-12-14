@@ -22,7 +22,7 @@
                 <img src="numenta_black.svg" alt="Numenta logo"><h1>NuPIC Visualization</h1>
               </div>
             </div>
-            <p>Browse for a local file to render, then click "Render" to turn it into a graph.</p>
+            <p>Browse for a local file to render.</p>
             <div class="form-inline">
               <div class="form-group">
                 <div class="input-group">
@@ -33,7 +33,6 @@
                   </span>
                   <input type="text" class="form-control file-name" ng-model="view.loadedFileName" readonly="readonly">
                 </div>
-                <button id="renderButton" class="btn btn-primary" ng-class="{'ready' : view.canRender && view.loadedFileName !== view.renderedFileName}" ng-disabled="!view.canRender" ng-click="renderData()">Render</button>
                 <div class="errors">
                   <div ng-repeat="error in view.errors track by $index" class="alert alert-{{error.type}} alert-dismissible" role="alert">
                     <button type="button" class="close" aria-label="Close" ng-click="clearError($index)"><span aria-hidden="true">&times;</span></button>
@@ -56,7 +55,7 @@
       </div>
       <div class="row graphs">
         <div class="col-md-12">
-          <h3 class="file-name-label">{{view.renderedFileName}}</h3>
+          <h3 class="file-name-label">{{view.loadedFileName}}</h3>
           <div ng-class="{'col-md-6' : view.optionsVisible, 'col-md-8' : !view.optionsVisible}">
             <div class="graph" id="dataContainer"></div>
           </div>
