@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/nupic-community/nupic.visualizations](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nupic-community/nupic.visualizations?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Work with NuPIC results interactively in a [nice web UI](https://nupic-visualizations.firebaseapp.com/). This app is designed to consume and render CSV files output by NuPIC, but it can read any CSV file with numercical data that has a timestamp as one of its fields.
+Work with NuPIC results interactively in a [nice web UI](https://nupic-visualizations.firebaseapp.com/). This app is designed to consume and render CSV files output by NuPIC, but it can read any CSV file with numerical data that has a timestamp as one of its fields.
 
 ![NuPIC Visualizations screenshot](https://raw.githubusercontent.com/wiki/nupic-community/nupic.visualizations/images/nupic_visualizations.png)
 
