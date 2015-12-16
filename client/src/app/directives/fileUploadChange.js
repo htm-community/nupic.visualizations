@@ -3,9 +3,13 @@ angular.module('app').directive('fileUploadChange', function() {
     restrict: 'A',
     link: function(scope, element, attrs) {
       var onChangeHandler = scope.$eval(attrs.fileUploadChange);
-      element.bind('change', onChangeHandler);
+      element.on('change', onChangeHandler);
+      var listener = scope.$on("fileUploadChange", function(){
+        angular.element(element).val(null);
+      });
       scope.$on("$destroy", function() {
-        element.unbind();
+        element.off();
+        listener();
       });
     }
   };

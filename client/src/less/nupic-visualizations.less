@@ -47,6 +47,7 @@
 .file-name-label {
   padding-left:70px;
   margin-top:10px;
+  min-height:26px;
 }
 
 .options-toggle {
@@ -150,5 +151,63 @@ input.file-name {
   to {
     border-color: #00a1e1;
     box-shadow: 0 0 4px #00a1e1;
+  }
+}
+
+// loading animation
+.loading {
+  position:absolute;
+  top:50%;
+  left:50%;
+  margin-top:-50px;
+  margin-left:-50px;
+  z-index:1;
+}
+
+.loading-spin {
+  -webkit-transform-origin: 50% 50%;
+  transform-origin:50% 50%;
+  -ms-transform-origin:50% 50%; /* IE 9 */
+  -webkit-animation: spin .75s infinite linear;
+  -moz-animation: spin .75s infinite linear;
+  -o-animation: spin .75s infinite linear;
+  animation: spin .75s infinite linear;
+  background-color: transparent;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto;
+  display:block;
+  border: 10px solid @brand-primary;
+  border-top: 10px solid rgba(0,0,0,0);
+  border-left: 10px solid rgba(0,0,0,0);
+  border-right: 10px solid rgba(0,0,0,0);
+  border-radius: 100px;
+  box-shadow: 0 0 15px desaturate(@brand-primary,25%), inset 0 0 15px desaturate(@brand-primary,25%);
+}
+
+@-moz-keyframes spin {
+  from {
+    -moz-transform: rotate(0deg);
+  }
+  to {
+    -moz-transform: rotate(360deg);
+  }
+}
+
+@-webkit-keyframes spin {
+  from {
+    -webkit-transform: rotate(0deg);
+  }
+  to {
+    -webkit-transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }

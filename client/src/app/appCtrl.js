@@ -1,21 +1,24 @@
 // Web UI:
 
-angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', function($scope, $timeout, appConfig) {
+angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'appConfig', function($scope, $http, $timeout, appConfig) {
 
   $scope.view = {
     fieldState: [],
     graph: null,
     dataField: null,
     optionsVisible: true,
+    filePath: "",
     loadedFileName: "",
-    errors: []
+    errors: [],
+    loading: false
   };
 
   var loadedCSV = [],
     loadedFields = [], //=CSV header (parsed)
     backupCSV = [],
     timers = {},
-    useIterationsForTimestamp = false;
+    useIterationsForTimestamp = false,
+    iteration = 0;
 
   // the "Show/Hide Options" button
   $scope.toggleOptions = function() {
@@ -27,79 +30,186 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
     }
   };
 
-  // read and parse a CSV file
-  $scope.uploadFile = function(event) {
+  $scope.getRemoteFile = function() {
+    $scope.$broadcast("fileUploadChange");
+    $scope.view.loading = true;
+    // we do a quick test here to see if the server supports the Range header.
+    // If so, we try to stream. If not, we try to download.
+    $http.head($scope.view.filePath,{'headers' : {'Range' : 'bytes=0-32'}}).then(function(response){
+      if(response.status === 206) {
+        streamRemoteFile($scope.view.filePath);
+      } else {
+        downloadFile($scope.view.filePath);
+      }
+    }, function() {
+      downloadFile($scope.view.filePath);
+    });
+  };
+
+  $scope.canDownload = function() {
+    var pathParts = $scope.view.filePath.split("://");
+    if ((pathParts[0] === "https" || pathParts[0] === "http") && pathParts.length > 1 && pathParts[1].length > 0) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  $scope.getLocalFile = function(event) {
+    $scope.view.filePath = event.target.files[0].name;
+    $scope.view.loading = true;
+    // $scope.view.filePath = "";
+    streamLocalFile(event.target.files[0]);
+  };
+
+  var getRemoteFileName = function(url) {
+    var pathParts = url.split("/");
+    return pathParts[pathParts.length - 1];
+  };
+
+  var loadData = function(data) {
+    for (var rowId = 0; rowId < data.length; rowId++) {
+      var arr = [];
+      for (var colId = 0; colId < loadedFields.length; colId++) {
+        var fieldName = loadedFields[colId];
+        var fieldValue = (useIterationsForTimestamp && fieldName === appConfig.TIMESTAMP) ? iteration++ : data[rowId][fieldName]; // read field's value
+        if (fieldName === appConfig.TIMESTAMP) { // dealing with timestamp. See generateFieldMap
+          if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
+            //fieldValue; // keep as is
+          } else if (typeof(fieldValue) === "string" && parseDate(fieldValue) !== null) { // use date string timestamps
+            fieldValue = parseDate(fieldValue);
+          } else { // unparsable timestamp field
+            handleError("Parsing timestamp failed, fallback to using iteration number", "warning", true);
+            fieldValue = iteration;
+          }
+        } else { // process other (non-date) data columns
+          // FIXME: this is an OPF "bug", should be discussed upstream
+          if (fieldValue === "None") {
+            fieldValue = appConfig.NONE_VALUE_REPLACEMENT;
+          }
+        }
+        arr.push(fieldValue);
+      }
+      if (appConfig.SLIDING_WINDOW && loadedCSV.length > appConfig.BUFFER_SIZE) {
+        loadedCSV.shift();
+        backupCSV.shift();
+      }
+      loadedCSV.push(arr);
+      backupCSV.push(angular.extend([], arr));
+    }
+    if ($scope.view.graph === null) {
+      renderGraph();
+    } else {
+      $scope.view.graph.updateOptions({
+        'file': loadedCSV
+      });
+    }
+    $scope.$apply();
+  };
+
+  var resetFields = function() {
     // reset fields
     $scope.view.fieldState.length = 0;
     $scope.view.graph = null;
     $scope.view.dataField = null;
     $scope.view.errors.length = 0;
+    $scope.view.loadedFileName = "";
     useIterationsForTimestamp = false;
+    iteration = 0;
     loadedCSV.length = 0;
     loadedFields.length = 0;
-    $scope.view.loadedFileName = event.target.files[0].name;
-    Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
+  };
+
+  var downloadFile = function(url) {
+    resetFields();
+    Papa.parse(url, {
+      download: true,
+      skipEmptyLines: true,
+      header: true,
+      dynamicTyping: true,
+      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
+      comments: "#",
+      complete: function(results) {
+        if (!angular.isDefined(results.data)) {
+          handleError("An error occurred when attempting to download file.", "danger");
+        } else {
+          $scope.view.loadedFileName = getRemoteFileName(url);
+          loadedFields = generateFieldMap(results.data[results.data.length - 1], appConfig.EXCLUDE_FIELDS);
+          results.data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
+          loadData(results.data);
+        }
+        $scope.view.loading = false;
+        $scope.$apply();
+      },
+      error: function(error) {
+        handleError("Could not download file.", "danger");
+        $scope.view.loading = false;
+      }
+    });
+  };
+
+  var streamRemoteFile = function(url) {
+    resetFields();
     Papa.RemoteChunkSize = appConfig.REMOTE_CHUNK_SIZE;
     var firstChunkComplete = false;
-    var iteration = 0;
-    Papa.parse(event.target.files[0], {
+    Papa.parse(url, {
+      download: true,
       skipEmptyLines: true,
       header: true,
       dynamicTyping: true,
       worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
       comments: "#",
       chunk: function(chunk) {
-        var data = chunk.data;
         if (!firstChunkComplete) {
-          loadedFields = generateFieldMap(data[data.length - 1], appConfig.EXCLUDE_FIELDS);
+          loadedFields = generateFieldMap(chunk.data[chunk.data.length - 1], appConfig.EXCLUDE_FIELDS);
           firstChunkComplete = true;
         }
-        for (var rowId = 0; rowId < data.length; rowId++) {
-          var arr = [];
-          for (var colId = 0; colId < loadedFields.length; colId++) {
-            var fieldName = loadedFields[colId];
-            var fieldValue = (useIterationsForTimestamp && fieldName === appConfig.TIMESTAMP) ? iteration++ : data[rowId][fieldName]; // read field's value
-            if (fieldName === appConfig.TIMESTAMP) { // dealing with timestamp. See generateFieldMap
-              if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
-                //fieldValue; // keep as is
-              } else if (typeof(fieldValue) === "string" && parseDate(fieldValue) !== null) { // use date string timestamps
-                fieldValue = parseDate(fieldValue);
-              } else { // unparsable timestamp field
-                handleError("Parsing timestamp failed, fallback to using iteration number", "warning", true);
-                fieldValue = iteration;
-              }
-            } else { // process other (non-date) data columns
-              // FIXME: this is an OPF "bug", should be discussed upstream
-              if (fieldValue === "None") {
-                fieldValue = appConfig.NONE_VALUE_REPLACEMENT;
-              }
-            }
-            arr.push(fieldValue);
-          }
-          if (appConfig.SLIDING_WINDOW && loadedCSV.length > appConfig.BUFFER_SIZE) {
-            loadedCSV.shift();
-            backupCSV.shift();
-          }
-          loadedCSV.push(arr);
-          backupCSV.push(angular.extend([], arr));
-        }
-        if ($scope.view.graph === null) {
-          renderGraph();
-        } else {
-          $scope.view.graph.updateOptions({
-            'file': loadedCSV
-          });
-        }
-        $scope.$apply();
+        loadData(chunk.data);
       },
       beforeFirstChunk: function(chunk) {
+        $scope.view.loadedFileName = getRemoteFileName(url);
         var rows = chunk.split(/\r\n|\r|\n/);
         rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+        $scope.view.loading = false;
+        return rows.join('\n');
+      },
+      //fastMode: true, // automatically enabled if no " appear
+      error: function(error) {
+        handleError("Could not stream file.", "danger");
+        $scope.view.loading = false;
+      }
+    });
+  };
+
+  // read and parse a CSV file
+  var streamLocalFile = function(file) {
+    resetFields();
+    Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
+    var firstChunkComplete = false;
+    Papa.parse(file, {
+      skipEmptyLines: true,
+      header: true,
+      dynamicTyping: true,
+      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
+      comments: "#",
+      chunk: function(chunk) {
+        if (!firstChunkComplete) {
+          loadedFields = generateFieldMap(chunk.data[chunk.data.length - 1], appConfig.EXCLUDE_FIELDS);
+          firstChunkComplete = true;
+        }
+        loadData(chunk.data);
+      },
+      beforeFirstChunk: function(chunk) {
+        $scope.view.loadedFileName = file.name;
+        var rows = chunk.split(/\r\n|\r|\n/);
+        rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+        $scope.view.loading = false;
         return rows.join('\n');
       },
       //fastMode: true, // automatically enabled if no " appear
       error: function(error) {
         handleError(error, "danger");
+        $scope.view.loading = false;
       }
     });
   };
@@ -112,7 +222,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       // loop through existing errors by 'message'
       errs = $scope.view.errors;
       for (var i = 0; i < errs.length; i++) {
-        if (errs.i.message === error) { // not unique
+        if (errs[i].message === error) { // not unique
           return;
         }
       }
@@ -121,6 +231,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$timeout', 'appConfig', 
       "message": error,
       "type": type
     });
+    $scope.$apply();
   };
 
   $scope.clearErrors = function() {

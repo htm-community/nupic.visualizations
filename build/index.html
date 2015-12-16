@@ -22,17 +22,18 @@
                 <img src="numenta_black.svg" alt="Numenta logo"><h1>NuPIC Visualization</h1>
               </div>
             </div>
-            <p>Browse for a local file to render.</p>
+            <p>Enter a URL from which to download a file, or browse for a local file.</p>
             <div class="form-inline">
               <div class="form-group">
                 <div class="input-group">
+                  <input type="text" class="form-control file-name" ng-model="view.filePath">
                   <span class="input-group-btn">
-                    <span class="btn btn-default btn-file">
-                      Browse&hellip; <input type="file" file-upload-change="uploadFile">
-                    </span>
+                    <button class="btn btn-default" type="button" ng-disabled="!canDownload()" ng-click="getRemoteFile()">Download</button>
                   </span>
-                  <input type="text" class="form-control file-name" ng-model="view.loadedFileName" readonly="readonly">
                 </div>
+                <span class="btn btn-primary btn-file">
+                  Browse&hellip; <input type="file" file-upload-change="getLocalFile">
+                </span>
                 <div class="errors">
                   <div ng-repeat="error in view.errors track by $index" class="alert alert-{{error.type}} alert-dismissible" role="alert">
                     <button type="button" class="close" aria-label="Close" ng-click="clearError($index)"><span aria-hidden="true">&times;</span></button>
@@ -57,6 +58,7 @@
         <div class="col-md-12">
           <h3 class="file-name-label">{{view.loadedFileName}}</h3>
           <div ng-class="{'col-md-6' : view.optionsVisible, 'col-md-8' : !view.optionsVisible}">
+            <div class="loading" ng-show="view.loading"><span class="loading-spin"></span></div>
             <div class="graph" id="dataContainer"></div>
           </div>
           <div class="fields" ng-class="{'col-md-6' : view.optionsVisible, 'col-md-4' : !view.optionsVisible}" ng-show="view.graph">
