@@ -469,7 +469,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           if (is_initial) {
             setColors(graph.getColors());
           }
-        }
+        },
+        underlayCallback: highlightAnomaly,
       }
     );
   };
@@ -479,5 +480,19 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       $timeout.cancel(timer);
     });
   });
+
+  function highlightAnomaly(canvas, area, g) {
+    var yellow = "rgba(0, 255, 10, 0.6)";
+    function highlight_period(x_start, x_end, color) {
+      var canvas_left_x = g.toDomXCoord(x_start);
+      var canvas_right_x = g.toDomXCoord(x_end);
+      var canvas_width = canvas_right_x - canvas_left_x;
+      canvas.fillStype = color;
+      canvas.fillRect(canvas_left_x, area.y, canvas_width, area.h);
+    }
+    // test
+    highlight_period(30, 230, yellow);
+  }
+
 
 }]);
