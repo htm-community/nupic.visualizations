@@ -51,7 +51,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     // If so, we try to stream. If not, we try to download.
     $http.head($scope.view.filePath,{'headers' : {'Range' : 'bytes=0-32'}}).then(
      function(response){
-      if(response.status === 206) {
+      if(response.status === 206) { //FIXME use canDownload and getFileSize to simplify this code, and test it!
         // now we check to see how big the file is
         $http.head($scope.view.filePath).then(function(response){
           if (getFileSize(null, response.headers('Content-Length')) > appConfig.MAX_FILE_SIZE) {
