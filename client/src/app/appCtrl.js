@@ -195,7 +195,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           handleError("An error occurred when attempting to download file.", "danger");
         } else {
           $scope.view.loadedFileName = getRemoteFileName(url);
-          loadedFields = generateFieldMap(results.data[results.data.length - 1], appConfig.EXCLUDE_FIELDS);
+          loadedFields = generateFieldMap(results.data[results.data.length - 1], results.data[results.data.length - 2], appConfig.EXCLUDE_FIELDS);
           results.data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
           loadData(results.data);
         }
@@ -223,7 +223,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       chunk: function(chunk, parser) {
         if (!firstChunkComplete) {
           streamParser = parser;
-          loadedFields = generateFieldMap(chunk.data[chunk.data.length - 1], appConfig.EXCLUDE_FIELDS);
+          loadedFields = generateFieldMap(chunk.data[chunk.data.length - 1], chunk.data[chunk.data.length - 2], appConfig.EXCLUDE_FIELDS);
           firstChunkComplete = true;
         }
         loadData(chunk.data);
@@ -257,7 +257,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       chunk: function(chunk, parser) {
         if (!firstChunkComplete) {
           streamParser = parser;
-          loadedFields = generateFieldMap(chunk.data[chunk.data.length - 1], appConfig.EXCLUDE_FIELDS);
+          loadedFields = generateFieldMap(chunk.data[chunk.data.length - 1], chunk.data[chunk.data.length - 2], appConfig.EXCLUDE_FIELDS);
           firstChunkComplete = true;
         }
         loadData(chunk.data);
@@ -434,7 +434,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // based on parsing the last (to omit Nones at the start) row of the data.
   // return: matrix with numeric columns
   // If TIMESTAMP is not present, use iterations instead and set global useIterationsForTimestamp=true
-  var generateFieldMap = function(row, excludes) {
+  // due to streaming/chunking, the function has to check if the last row is loaded properly, by comparing size 
+  // of the last 2 rows. 
+  var generateFieldMap = function(row, prevRow, excludes) {
+    // check if the last row is loaded completely
+    if (Object.keys(row).length !== Object.keys(prevRow).length) {
+      row = prevRow;
+      console.log("Last row was not loaded completely.");
+    }
     if (!row.hasOwnProperty(appConfig.TIMESTAMP)) {
       handleError("No timestamp field was found, using iterations instead", "info");
       useIterationsForTimestamp = true; //global flag
