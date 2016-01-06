@@ -482,7 +482,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   });
 
   function highlightAnomaly(canvas, area, g) {
-    var yellow = "rgba(0, 255, 10, 0.6)";
+    var yellow = "rgba(0, 255, 10, 1.0)";
+    var anomalyFieldName = "anomalyScore"; //TODO choose these values in UI
+    var anomalyThreshold = 0.8;
+    var dt=10;
+
     function highlight_period(x_start, x_end, color) {
       var canvas_left_x = g.toDomXCoord(x_start);
       var canvas_right_x = g.toDomXCoord(x_end);
@@ -491,7 +495,21 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       canvas.fillRect(canvas_left_x, area.y, canvas_width, area.h);
     }
     // test
-    highlight_period(30, 230, yellow);
+    highlight_period(30, 200, yellow); //FIXME add range select by y-value
+    var anomalyField = loadedFields.indexOf(anomalyFieldName);
+    var timeField = loadedFields.indexOf(appConfig.TIMESTAMP);
+    var _t=0;
+    var xaxis = loadedCSV.map(function(r) {return r[timeField];});
+    sz = loadedCSV.length;
+    for(var i=0; i<sz; i++) {
+      row = loadedCSV[i];
+      if(row[anomalyField] > anomalyThreshold) {
+        _t = row[timeField];
+        it = xaxis.lastIndexOf(_t);
+        console.log("found at"+_t+" aka "+it);
+        highlight_period(it-dt, it+dt, yellow);
+      }
+    }
   }
 
 
