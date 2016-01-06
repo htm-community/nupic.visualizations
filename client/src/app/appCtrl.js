@@ -91,11 +91,18 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
   };
 
-
+  // test if a remote file can be downloaded.
+  // "disables" the download button in UI
+  // A file can be downloaded if: 1. is a URL; 2. server supports "Range" header;
   $scope.canDownload = function() {
     var pathParts = $scope.view.filePath.split("://");
     if ((pathParts[0] === "https" || pathParts[0] === "http") && pathParts.length > 1 && pathParts[1].length > 0) {
-      return true;
+      // we do a quick test here to see if the server supports the Range header.
+      // If so, we try to stream. If not, we try to download.
+      $http.head($scope.view.filePath,{'headers' : {'Range' : 'bytes=0-32'}}).then(
+        function(response){ if(response.status === 206) { return true; } else { return false; } },
+        function() {return false;} //FIXME does this fn have to be here, as part of then()?
+      ); 
     } else {
       return false;
     }
