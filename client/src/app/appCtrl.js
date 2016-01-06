@@ -39,6 +39,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
   };
 
+  // handle downloading (or streaming, if supported) a remote file (from URL => canDownload==True)
   $scope.getRemoteFile = function() {
     $scope.view.windowing.show = false;
     $scope.view.windowing.paused = false;
@@ -48,7 +49,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     $scope.view.loading = true;
     // we do a quick test here to see if the server supports the Range header.
     // If so, we try to stream. If not, we try to download.
-    $http.head($scope.view.filePath,{'headers' : {'Range' : 'bytes=0-32'}}).then(function(response){
+    $http.head($scope.view.filePath,{'headers' : {'Range' : 'bytes=0-32'}}).then(
+     function(response){
       if(response.status === 206) {
         // now we check to see how big the file is
         $http.head($scope.view.filePath).then(function(response){
@@ -62,10 +64,33 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       } else {
         downloadFile($scope.view.filePath, "download");
       }
-    }, function() {
+     }, 
+     function() {
       downloadFile($scope.view.filePath, "download");
-    });
+     }
+    );
   };
+
+  // handle downloading (or Browsing) a local file
+  $scope.getLocalFile = function(event) {
+    $scope.view.filePath = event.target.files[0].name;
+    if (event.target.files[0].size > appConfig.MAX_FILE_SIZE) {
+      slidingWindow = true;
+      $scope.view.windowing.show = true;
+    }
+    $scope.view.loading = true;
+    downloadFile(event.target.files[0], "streamLocal");
+  };
+
+  // main "load" function that supports both URL/local file
+  $scope.loadFile = function(event) {
+    if ($scope.canDownload()) {
+      getRemoteFile();
+    } else {
+      getLocalFile(event);
+    }
+  };
+
 
   $scope.canDownload = function() {
     var pathParts = $scope.view.filePath.split("://");
@@ -96,16 +121,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       streamParser.resume();
       $scope.view.windowing.paused = false;
     }
-  };
-
-  $scope.getLocalFile = function(event) {
-    $scope.view.filePath = event.target.files[0].name;
-    if (event.target.files[0].size > appConfig.MAX_FILE_SIZE) {
-      slidingWindow = true;
-      $scope.view.windowing.show = true;
-    }
-    $scope.view.loading = true;
-    downloadFile(event.target.files[0], "streamLocal");
   };
 
   var getRemoteFileName = function(url) {
