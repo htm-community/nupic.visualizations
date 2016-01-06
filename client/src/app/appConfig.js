@@ -24,19 +24,24 @@ angular.module('app').constant('appConfig', {
   // We replace the with this value, defaults to 0.
   NONE_VALUE_REPLACEMENT : 0,
   // BUFFER:
-  // buffer size used for DyGraph streaming, default 1000
+  // buffer size used for DyGraph streaming, default 10000
   BUFFER_SIZE : 10000,
   // SLIDING_WINDOW:
   // True = each batch existing values are dropped, new BUFFER_SIZE is painted. Graph will "move to the right".
   // False = data never dropped, just append. Graph will "shrink". (default)
   SLIDING_WINDOW : false,
   // MAX_FILE_SIZE:
-  // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur.
-  MAX_FILE_SIZE : 5000000,
+  // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur.  (default 5MB)
+  MAX_FILE_SIZE : 5120000,
   // LOCAL_CHUNK_SIZE:
   // size in bytes of each chunk for the data stream, when reading local files
   LOCAL_CHUNK_SIZE : 65536,
   // REMOTE_CHUNK_SIZE:
   // size in bytes of each chunk for the data stream, when reading files over a network. Not currently used.
-  REMOTE_CHUNK_SIZE : 65536
+  REMOTE_CHUNK_SIZE : 65536,
+  // POLLING_INTERVAL:
+  // time interval (in ms) after which the source file is re-read to find possible updates. 
+  // A value <= 0 means polling is disabled - nothing else happens after the end of the file is reached. 
+  // Default: 0
+  POLLING_INTERVAL: 0
 });
