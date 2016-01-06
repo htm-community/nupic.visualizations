@@ -54,8 +54,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       if(response.status === 206) {
         // now we check to see how big the file is
         $http.head($scope.view.filePath).then(function(response){
-          var contentLength = response.headers('Content-Length');
-          if (contentLength > appConfig.MAX_FILE_SIZE) {
+          if (getFileSize(null, response.headers('Content-Length')) > appConfig.MAX_FILE_SIZE) {
             slidingWindow = true;
             $scope.view.windowing.show = true;
           }
@@ -74,7 +73,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // handle downloading (or Browsing) a local file
   $scope.getLocalFile = function(event) {
     $scope.view.filePath = event.target.files[0].name;
-    if (event.target.files[0].size > appConfig.MAX_FILE_SIZE) {
+    if (getFileSize(event.target.files[0], null) > appConfig.MAX_FILE_SIZE) {
       slidingWindow = true;
       $scope.view.windowing.show = true;
     }
@@ -105,6 +104,18 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       ); 
     } else {
       return false;
+    }
+  };
+
+  // get size of a file; one of the params must be specified, other can be null
+  // param file - file object
+  // param response - http response
+  // return number
+  var getFileSize = function(file, response) {
+    if (file !== null) {
+      return file.size;
+    } else {
+      return response.headers('Content-Length');
     }
   };
 
