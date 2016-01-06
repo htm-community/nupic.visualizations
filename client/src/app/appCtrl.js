@@ -114,9 +114,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   };
 
   var loadData = function(data) {
+    var tmpTime = -1;
     for (var rowId = 0; rowId < data.length; rowId++) {
       var arr = [];
-      var tmpTime = -1; 
       for (var colId = 0; colId < loadedFields.length; colId++) {
         var fieldName = loadedFields[colId];
         var fieldValue = data[rowId][fieldName]; // read field's value
@@ -133,11 +133,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           }
           // check time monotonicity
           if (fieldValue <= tmpTime) {
-            handleError("Your time is not monotonic at row"+rowId+"! Graphs are incorrect.", "danger", false);
-            console.log("time not monotonic at"+rowId);
+            handleError("Your time is not monotonic at row "+rowId+"! Graphs are incorrect.", "danger", false);
           }
           tmpTime = fieldValue;
-          console.log(fieldValue); 
         } else { // process other (non-date) data columns
           // FIXME: this is an OPF "bug", should be discussed upstream
           if (fieldValue === "None") {
