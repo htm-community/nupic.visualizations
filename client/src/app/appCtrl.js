@@ -57,13 +57,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
             slidingWindow = true;
             $scope.view.windowing.show = true;
           }
-          streamRemoteFile($scope.view.filePath);
+          downloadFile($scope.view.filePath, "streamRemote");
         });
       } else {
-        downloadFile($scope.view.filePath);
+        downloadFile($scope.view.filePath, "download");
       }
     }, function() {
-      downloadFile($scope.view.filePath);
+      downloadFile($scope.view.filePath, "download");
     });
   };
 
@@ -105,7 +105,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       $scope.view.windowing.show = true;
     }
     $scope.view.loading = true;
-    streamLocalFile(event.target.files[0]);
+    downloadFile(event.target.files[0], "streamLocal");
   };
 
   var getRemoteFileName = function(url) {
@@ -113,6 +113,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     return pathParts[pathParts.length - 1];
   };
 
+ 
   var loadData = function(data) {
     var tmpTime = -1;
     for (var rowId = 0; rowId < data.length; rowId++) {
@@ -181,8 +182,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     firstDataLoaded = false;
   };
 
-  var downloadFile = function(url) {
+  // function to "download" a file, 
+  // with param. 'mode': "download","streamLocal","streamRemote"
+  var downloadFile = function(url, mode) {
     resetFields();
+    Papa.RemoteChunkSize = appConfig.REMOTE_CHUNK_SIZE;
+    Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
+    var firstChunkComplete = false;
     Papa.parse(url, {
       download: true,
       skipEmptyLines: true,
@@ -190,7 +196,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       dynamicTyping: true,
       worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
       comments: "#",
+      // used for 'download' mode
       complete: function(results) {
+        if (mode !== "download") {
+          return;
+        }
         if (!angular.isDefined(results.data)) {
           handleError("An error occurred when attempting to download file.", "danger");
         } else {
@@ -202,24 +212,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         $scope.view.loading = false;
         $scope.$apply();
       },
-      error: function(error) {
-        $scope.view.loading = false;
-        handleError("Could not download file.", "danger");
-      }
-    });
-  };
 
-  var streamRemoteFile = function(url) {
-    resetFields();
-    Papa.RemoteChunkSize = appConfig.REMOTE_CHUNK_SIZE;
-    var firstChunkComplete = false;
-    Papa.parse(url, {
-      download: true,
-      skipEmptyLines: true,
-      header: true,
-      dynamicTyping: true,
-      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
-      comments: "#",
+      // used for 'stream*' mode
       chunk: function(chunk, parser) {
         if (!firstChunkComplete) {
           streamParser = parser;
@@ -229,53 +223,24 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         loadData(chunk.data);
       },
       beforeFirstChunk: function(chunk) {
-        $scope.view.loadedFileName = getRemoteFileName(url);
+        if (mode === "streamRemote") {
+          $scope.view.loadedFileName = getRemoteFileName(url);
+        } else if (mode === "streamLocal") {
+          $scope.view.loadedFileName = url.name;
+        }
         var rows = chunk.split(/\r\n|\r|\n/);
         rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
         $scope.view.loading = false;
         return rows.join('\n');
       },
-      //fastMode: true, // automatically enabled if no " appear
+      // end of stream*
       error: function(error) {
-        handleError("Could not stream file.", "danger");
         $scope.view.loading = false;
+        handleError("Could not download/stream the file.", "danger");
       }
     });
   };
 
-  // read and parse a CSV file
-  var streamLocalFile = function(file) {
-    resetFields();
-    Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
-    var firstChunkComplete = false;
-    Papa.parse(file, {
-      skipEmptyLines: true,
-      header: true,
-      dynamicTyping: true,
-      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
-      comments: "#",
-      chunk: function(chunk, parser) {
-        if (!firstChunkComplete) {
-          streamParser = parser;
-          loadedFields = generateFieldMap(chunk.data, appConfig.EXCLUDE_FIELDS);
-          firstChunkComplete = true;
-        }
-        loadData(chunk.data);
-      },
-      beforeFirstChunk: function(chunk) {
-        $scope.view.loadedFileName = file.name;
-        var rows = chunk.split(/\r\n|\r|\n/);
-        rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
-        $scope.view.loading = false;
-        return rows.join('\n');
-      },
-      //fastMode: true, // automatically enabled if no " appear
-      error: function(error) {
-        handleError(error, "danger");
-        $scope.view.loading = false;
-      }
-    });
-  };
 
   // show errors as "notices" in the UI
   var handleError = function(error, type, showOnce) {
