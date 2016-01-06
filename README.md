@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/nupic-community/nupic.visualizations](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/nupic-community/nupic.visualizations?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Work with NuPIC results interactively in a [nice web UI](https://nupic-visualizations.firebaseapp.com/). This app is designed to consume and render CSV files output by NuPIC, but it can read any CSV file with numerical data that has a timestamp as one of its fields.
+Work with NuPIC results interactively in a [nice web UI](https://nupic-visualizations.firebaseapp.com/). This app is designed to consume and render CSV files output by NuPIC, but it can read any CSV file with numerical data that represent some time-series. 
 
 ![NuPIC Visualizations screenshot](https://raw.githubusercontent.com/wiki/nupic-community/nupic.visualizations/images/nupic_visualizations.png)
 
@@ -57,6 +57,7 @@ There are demo files in `examples/` for NuPIC OPF, NAB and generic CSV files.
 
  * Select a local file by clicking 'Browse...', this will start rendering a new graph. 
   * You may get warning/error labels, that can be closed.
+  * You can also enter a URL of a remote file for streaming (in supported by the server). 
  * To zoom in on the graph, click and drag with the cursor. To zoom out, double-click. To pan on a zoomed graph, hold the ALT key (on Linux, hold the SHIFT key), while dragging the cursor.
  * The options to the right of the graph allow the user to:
   - Set the visibility of certain series
@@ -68,7 +69,7 @@ There are demo files in `examples/` for NuPIC OPF, NAB and generic CSV files.
 The goals of this project are:
 * nice, convenient & easy to use interactive graph visualizations
 * seamlessly runs everywhere (in web-browser, or [cloud](https://nupic-visualizations.firebaseapp.com/))
-* plot as much as possible - generic CSV
+* plot as much as possible - generic CSV (local or remote files)
  * tries to parse timestamp/x-data from many formats
  * no restrictions on the header format
  * can plot even non-standart data - strings (planned)
