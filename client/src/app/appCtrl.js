@@ -114,13 +114,16 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   };
 
   var loadData = function(data) {
+    var tmpTime = -1;
     for (var rowId = 0; rowId < data.length; rowId++) {
       var arr = [];
       for (var colId = 0; colId < loadedFields.length; colId++) {
         var fieldName = loadedFields[colId];
-        var fieldValue = (useIterationsForTimestamp && fieldName === appConfig.TIMESTAMP) ? iteration++ : data[rowId][fieldName]; // read field's value
+        var fieldValue = data[rowId][fieldName]; // read field's value
         if (fieldName === appConfig.TIMESTAMP) { // dealing with timestamp. See generateFieldMap
-          if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
+          if (useIterationsForTimestamp) {
+            fieldValue = iteration++;
+          } else if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
             //fieldValue; // keep as is
           } else if (typeof(fieldValue) === "string" && parseDate(fieldValue) !== null) { // use date string timestamps
             fieldValue = parseDate(fieldValue);
@@ -128,6 +131,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
             handleError("Parsing timestamp failed, fallback to using iteration number", "warning", true);
             fieldValue = iteration;
           }
+          // check time monotonicity
+          if (fieldValue <= tmpTime) {
+            handleError("Your time is not monotonic at row "+rowId+"! Graphs are incorrect.", "danger", false);
+          }
+          tmpTime = fieldValue;
         } else { // process other (non-date) data columns
           // FIXME: this is an OPF "bug", should be discussed upstream
           if (fieldValue === "None") {
