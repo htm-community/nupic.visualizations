@@ -114,6 +114,26 @@
   }
 }
 
+.windowing {
+  background-color:lighten(@brand-info, 35%);
+  border:solid 1px @brand-info;
+  border-radius:3px;
+  //margin:10px 5px 20px 55px;
+  padding:10px;
+  // margin-left:55px;
+  .warning {
+    font-size:110%;
+    color:darken(@brand-info, 25%);
+    font-weight:bold;
+    display:inline-block;
+    padding-top:5px;
+  }
+  div[class*="col-"] {
+    padding-left:5px;
+    padding-right:5px;
+  }
+}
+
 .btn-file {
   position: relative;
   overflow: hidden;
