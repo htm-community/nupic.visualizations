@@ -84,9 +84,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // main "load" function that supports both URL/local file
   $scope.loadFile = function(event) {
     if ($scope.canDownload()) {
-      getRemoteFile();
+      $scope.getRemoteFile();
     } else {
-      getLocalFile(event);
+      $scope.getLocalFile(event);
     }
   };
 
