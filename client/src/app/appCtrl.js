@@ -22,6 +22,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       interval : appConfig.POLLING_INTERVAL, // dT
       lastChunkIter : 0, // helper, for speed we render only chunks with iter>last
     },
+    file : { // info about the input file
+      size : 0,
+    },
   };
 
   var loadedCSV = [],
@@ -52,9 +55,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     slidingWindow = false;
     $scope.$broadcast("fileUploadChange");
     $scope.view.loading = true;
-    var sz = getFileSize($scope.view.filePath);
-    console.log("size "+sz);
-    if ($scope.canDownload() && (getFileSize($scope.view.filePath) > appConfig.MAX_FILE_SIZE)) { 
+    $scope.view.file.size = getFileSize($scope.view.filePath);
+    console.log("File size "+$scope.view.file.size);
+    if ($scope.canDownload() && $scope.view.file.size > appConfig.MAX_FILE_SIZE) { 
       console.log("streamig...");
       downloadFile($scope.view.filePath, "streamRemote");
     } else {
@@ -65,7 +68,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // handle downloading (or Browsing) a local file
   $scope.getLocalFile = function(event) {
     $scope.view.filePath = event.target.files[0].name;
-    if (getFileSize(event.target.files[0], null) > appConfig.MAX_FILE_SIZE) {
+    $scope.view.file.size = getFileSize(event.target.files[0]);
+    console.log("File size "+$scope.view.file.size);
+    if ($scope.view.file.size > appConfig.MAX_FILE_SIZE) {
       slidingWindow = true;
       $scope.view.windowing.show = true;
     }
@@ -295,6 +300,12 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         // we skip renderning all but the last window
         // this technique only helps after the file was once read to the end (completed)
         if(iter <= $scope.view.monitor.lastChunkIter) {
+          console.log("Skipping "+iter+" "+$scope.view.monitor.lastChunkIter);
+          return;
+        } else if (iter*appConfig.LOCAL_CHUNK_SIZE < appConfig.MAX_FILE_SIZE) { //FIXME better use exact file size
+        //
+          //!console.log("size "+getFileSize($scope.view.loadedFileName)+" "+$scope.view.loadedFileName);
+          console.log("Skipping 2"+iter+" "+iter*appConfig.LOCAL_CHUNK_SIZE+" "+appConfig.MAX_FILE_SIZE);
           return;
         } else {
           loadData(chunk.data); // parsing and rendering is slow
