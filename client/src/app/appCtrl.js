@@ -18,8 +18,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       aborted : false,
     }, 
     monitor : { // online monitoring
-      clock : null,
-      interval : appConfig.POLLING_INTERVAL,
+      clock : null, // the function in setIteration
+      interval : appConfig.POLLING_INTERVAL, // dT
+      lastChunkIter : 0, // helper, for speed we render only chunks with iter>last
     },
   };
 
@@ -253,6 +254,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     Papa.RemoteChunkSize = appConfig.REMOTE_CHUNK_SIZE;
     Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
     var firstChunkComplete = false;
+    var iter = 0;
     Papa.parse(url, {
       download: true,
       skipEmptyLines: true,
@@ -262,6 +264,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       comments: "#",
       // used for 'download' mode
       complete: function(results) {
+        console.log("COMPLETED");
+        $scope.view.monitor.lastChunkIter = iter;
         if (mode !== "download") {
           return;
         }
@@ -279,12 +283,22 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
 
       // used for 'stream*' mode
       chunk: function(chunk, parser) {
+        iter++;
         if (!firstChunkComplete) {
           streamParser = parser;
           loadedFields = generateFieldMap(chunk.data, appConfig.EXCLUDE_FIELDS);
           firstChunkComplete = true;
         }
-        loadData(chunk.data);
+
+        // as files grow very large in continuous monitoring
+        // for speed reasons (on large files) in the online monitor mode, 
+        // we skip renderning all but the last window
+        // this technique only helps after the file was once read to the end (completed)
+        if(iter <= $scope.view.monitor.lastChunkIter) {
+          return;
+        } else {
+          loadData(chunk.data); // parsing and rendering is slow
+        }
       },
       beforeFirstChunk: function(chunk) {
         if (mode === "streamRemote") {
