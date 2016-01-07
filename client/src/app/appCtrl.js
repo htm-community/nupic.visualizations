@@ -300,12 +300,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         // we skip renderning all but the last window
         // this technique only helps after the file was once read to the end (completed)
         if(iter <= $scope.view.monitor.lastChunkIter) {
-          console.log("Skipping "+iter+" "+$scope.view.monitor.lastChunkIter);
+          console.log("Skipping: iter "+iter+" < = "+$scope.view.monitor.lastChunkIter);
           return;
-        } else if (iter*appConfig.LOCAL_CHUNK_SIZE < appConfig.MAX_FILE_SIZE) { //FIXME better use exact file size
+        } else if (iter*appConfig.LOCAL_CHUNK_SIZE + 10*appConfig.LOCAL_CHUNK_SIZE < $scope.view.file.size) { //FIXME how ensure the safety buffer (10*XX) from CHUNK_SIZE (B) responds to BUFFER_SIZE (rows)
         //
-          //!console.log("size "+getFileSize($scope.view.loadedFileName)+" "+$scope.view.loadedFileName);
-          console.log("Skipping 2"+iter+" "+iter*appConfig.LOCAL_CHUNK_SIZE+" "+appConfig.MAX_FILE_SIZE);
+          console.log("Skipping 2: iter "+iter+", bytes read "+iter*appConfig.LOCAL_CHUNK_SIZE+" < "+$scope.view.file.size);
           return;
         } else {
           loadData(chunk.data); // parsing and rendering is slow
