@@ -28,6 +28,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       name : null,
       path : null,
       loadingInProgress : false, // set true on start of file loading
+      local : true,
     },
   };
 
@@ -71,6 +72,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
 
   // handle downloading (or Browsing) a local file
   $scope.getLocalFile = function() {
+    // update file size for local files
+    $scope.view.file.size = getFileSize($scope.view.file.file);
     console.log("File size "+$scope.view.file.size);
     if ($scope.view.file.size > appConfig.MAX_FILE_SIZE) {
       slidingWindow = true;
@@ -89,9 +92,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       $scope.view.file.name = $scope.view.file.file.name;
       $scope.view.file.path = event.target.files[0].name;
       $scope.view.filePath = $scope.view.file.path; //TODO remove this
-      $scope.view.file.size = getFileSize(event.target.files[0]);
-      console.log("File size "+$scope.view.file.size);
     }
+    $scope.canDownload(); // will set the local file= true/false
     loadFileHelper();
     setMonitoringTimer(appConfig.POLLING_INTERVAL); //FIXME create an entry element for numeric value in UI for this, each change should call setMonitoringTimer()
   };
@@ -121,10 +123,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
     $scope.view.file.loadingInProgress = true;
     // call the file readers
-    if ($scope.canDownload()) {
-      $scope.getRemoteFile();
-    } else {
+    if ($scope.view.file.local) {
       $scope.getLocalFile();
+    } else {
+      $scope.getRemoteFile();
     }
   };
 
@@ -135,6 +137,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   $scope.canDownload = function() {
     var pathParts = $scope.view.filePath.split("://");
     if ((pathParts[0] === "https" || pathParts[0] === "http") && pathParts.length > 1 && pathParts[1].length > 0) {
+      $scope.view.file.local = false;
       // we do a quick test here to see if the server supports the Range header.
       // If so, we try to stream. If not, we try to download.
       try{
@@ -154,6 +157,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         return false;
       }
     } else { // not a remote URL
+      $scope.view.file.local = true;
       return false;
     }
   };
