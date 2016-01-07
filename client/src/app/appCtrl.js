@@ -15,8 +15,12 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       threshold : appConfig.MAX_FILE_SIZE,
       show : false,
       paused : false,
-      aborted : false
-    }
+      aborted : false,
+    }, 
+    monitor : { // online monitoring
+      clock : null,
+      interval : appConfig.POLLING_INTERVAL,
+    },
   };
 
   var loadedCSV = [],
@@ -69,13 +73,34 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   };
 
   // main "load" function that supports both URL/local file
+  // takes care of monitoring/streaming-data plots: if appConfig.POLLING_INTERVAL > 0 keep polling the file,sleeping
   $scope.loadFile = function(event) {
+    loadFileHelper(event);
+    if (appConfig.POLLING_INTERVAL > 0) {
+      handleError("Monitoring mode started, update interval "+appConfig.POLLING_INTERVAL+"ms. ", "warning",true);
+      $scope.view.monitor.clock = setInterval(function () {loadFileHelper(event); console.log("troll");}, $scope.view.monitor.interval); //FIXME work with remote too
+    }
+  };
+
+  // helper fn for timer/monitoring in loadFile
+  var loadFileHelper = function(event) {
+    // react to change in POLLING_INTERVAL
+    if ($scope.view.monitor.interval != appConfig.POLLING_INTERVAL) {
+      console.log("Polling interval changed to"+appConfig.POLLING_INTERVAL);
+      clearInterval($scope.view.monitor.clock); //invalidate
+      if (appConfig.POLLING_INTERVAL > 0) { //set new value
+        $scope.view.monitor.interval = appConfig.POLLING_INTERVAL;
+        $scope.view.monitor.clock = setInterval(function (){loadFileHelper(event);}, appConfig.POLLING_INTERVAL);
+      }
+    }
+    // call the file readers
     if ($scope.canDownload()) {
       $scope.getRemoteFile();
     } else {
       $scope.getLocalFile(event);
     }
   };
+
 
   // test if a remote file can be downloaded.
   // "disables" the download button in UI
@@ -193,7 +218,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
     if ($scope.view.graph === null) {
       renderGraph();
-    } else {
+    } else if (loadedCSV.length > 0) {
       $scope.view.graph.updateOptions({
         'file': loadedCSV
       });
