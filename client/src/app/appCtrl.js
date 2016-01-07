@@ -548,35 +548,53 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   });
 
   function highlightAnomaly(canvas, area, g) {
-    var yellow = "rgba(0, 255, 10, 1.0)";
-    var anomalyFieldName = "anomalyScore"; //TODO choose these values in UI
-    var anomalyThreshold = 0.8;
+    var yellow = "rgba(0, 255, 10, 0.1)";
+
+    var anomalyFieldName = "anomaly_score"; //TODO choose these values in UI
+    var anomalyThreshold = 0.6; //TODO choose in UI
     var dt=10;
 
+    // draw rectangle on x0..x1
     function highlight_period(x_start, x_end, color) {
       var canvas_left_x = g.toDomXCoord(x_start);
       var canvas_right_x = g.toDomXCoord(x_end);
       var canvas_width = canvas_right_x - canvas_left_x;
       canvas.fillStype = color;
+      //console.log("pos "+canvas_left_x+" "+area.y+" "+canvas_width+" "+area.h);
       canvas.fillRect(canvas_left_x, area.y, canvas_width, area.h);
     }
-    // test
-    highlight_period(30, 200, yellow); //FIXME add range select by y-value
-    var anomalyField = loadedFields.indexOf(anomalyFieldName);
-    var timeField = loadedFields.indexOf(appConfig.TIMESTAMP);
-    var _t=0;
-    var xaxis = loadedCSV.map(function(r) {return r[timeField];});
-    sz = loadedCSV.length;
-    for(var i=0; i<sz; i++) {
-      row = loadedCSV[i];
-      if(row[anomalyField] > anomalyThreshold) {
-        _t = row[timeField];
-        it = xaxis.lastIndexOf(_t);
-        console.log("found at"+_t+" aka "+it);
-        highlight_period(it-dt, it+dt, yellow);
+
+    // find x values matching condition on y-value
+    // params: data (all fields), watchedFieldName (string), threshold (for condition >thr)
+    // return array with indices of anomalies
+    function find_where(data, watchedFieldName, threshold) {
+      var results = [];
+      var fnIdx = loadedFields.indexOf(watchedFieldName);
+      var timeIdx = loadedFields.indexOf(appConfig.TIMESTAMP);
+      for( var i=0; i< data.length; i++) {
+        var row = data[i];
+        // the condition is here
+        if (row[fnIdx] >= threshold) {
+          time = row[timeIdx];
+          console.log("found anomaly at "+time+" with value "+row[fnIdx]);
+          results.push(time);
+        }
       }
+      // update dt to grain resol of timestamps
+      dt = dt*(data[1][timeIdx]-data[0][timeIdx]);
+      return results;
+    } //end find_where
+
+    //highlight_period(2, 5, yellow); //test
+    // find relevant points
+    var selected = find_where(loadedCSV, "anomaly_score", 0.6);
+    // plot all of them
+    for (var i=0; i < selected.length; i++) {
+      highlight_period(selected[i]-dt, selected[i]+dt, yellow);
     }
-  }
+    console.log("highlight call");
+
+  } // end highlightAnomaly callback
 
 
 }]);
