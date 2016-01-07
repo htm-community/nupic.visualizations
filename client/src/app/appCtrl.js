@@ -15,8 +15,15 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       threshold : appConfig.MAX_FILE_SIZE,
       show : false,
       paused : false,
-      aborted : false
-    }
+      aborted : false,
+    },
+    highlighting : { // section for highlighting (anomalie) over a threshold
+      fieldName : "sine", //TODO add UI control
+      threshold : 0.8, // UI control
+      color : "rgba(0, 254, 0, 0.7)",
+      radius : 10, //in "steps" of xdata values
+      finished : true, // sync variable, so we wait till started run of highlightAnomaly finishes
+    },
   };
 
   var loadedCSV = [],
@@ -28,6 +35,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     slidingWindow = appConfig.SLIDING_WINDOW,
     streamParser = null,
     firstDataLoaded = false;
+
 
   // the "Show/Hide Options" button
   $scope.toggleOptions = function() {
@@ -547,12 +555,18 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     });
   });
 
-  function highlightAnomaly(canvas, area, g) {
-    var yellow = "rgba(0, 255, 10, 0.1)";
 
-    var anomalyFieldName = "anomaly_score"; //TODO choose these values in UI
-    var anomalyThreshold = 0.6; //TODO choose in UI
-    var dt=10;
+  // given values in highlighting{} structure, 
+  // highlight areas where a select function value crosses a threshold
+  // used in dygraph's underlayCallback
+  function highlightAnomaly(canvas, area, g) {
+    // sync semaphor, do not start another call till last finished
+    if($scope.view.highlighting.finished === false) {
+      return;
+    }
+    console.log("highlighting...");
+    $scope.view.highlighting.finished = false;
+    var timeIdx;
 
     // draw rectangle on x0..x1
     function highlight_period(x_start, x_end, color) {
@@ -560,40 +574,42 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       var canvas_right_x = g.toDomXCoord(x_end);
       var canvas_width = canvas_right_x - canvas_left_x;
       canvas.fillStype = color;
-      //console.log("pos "+canvas_left_x+" "+area.y+" "+canvas_width+" "+area.h);
       canvas.fillRect(canvas_left_x, area.y, canvas_width, area.h);
     }
 
     // find x values matching condition on y-value
     // params: data (all fields), watchedFieldName (string), threshold (for condition >thr)
     // return array with indices of anomalies
-    function find_where(data, watchedFieldName, threshold) {
+    function find_where(data, watchedFieldName, threshold, dt) {
       var results = [];
       var fnIdx = loadedFields.indexOf(watchedFieldName);
-      var timeIdx = loadedFields.indexOf(appConfig.TIMESTAMP);
+      if (fnIdx === -1) {
+        handleError("Highlighting cannot work, field "+watchedFieldName+" not found!", "danger", true);
+        return results;
+      }
+      timeIdx = loadedFields.indexOf(appConfig.TIMESTAMP);
       for( var i=0; i< data.length; i++) {
         var row = data[i];
         // the condition is here
         if (row[fnIdx] >= threshold) {
-          time = row[timeIdx];
-          console.log("found anomaly at "+time+" with value "+row[fnIdx]);
+          var time = row[timeIdx];
+          //console.log("found anomaly at "+time+" with value "+row[fnIdx]);
           results.push(time);
         }
       }
-      // update dt to grain resol of timestamps
-      dt = dt*(data[1][timeIdx]-data[0][timeIdx]);
       return results;
     } //end find_where
 
     //highlight_period(2, 5, yellow); //test
     // find relevant points
-    var selected = find_where(loadedCSV, "anomaly_score", 0.6);
+    var selected = find_where(loadedCSV, $scope.view.highlighting.fieldName, $scope.view.highlighting.threshold);
+    var modDt = $scope.view.highlighting.radius*(loadedCSV[1][timeIdx]-loadedCSV[0][timeIdx]); // update dt to grain resol of timestamps
     // plot all of them
     for (var i=0; i < selected.length; i++) {
-      highlight_period(selected[i]-dt, selected[i]+dt, yellow);
+      highlight_period(selected[i]-modDt, selected[i]+modDt, $scope.view.highlighting.color);
     }
-    console.log("highlight call");
 
+    $scope.view.highlighting.finished = true;
   } // end highlightAnomaly callback
 
 
