@@ -10,7 +10,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     filePath: "",
     loadedFileName: "",
     errors: [],
-    loading: false
+    loading: false,
+    windowing : {
+      threshold : appConfig.MAX_FILE_SIZE,
+      show : false,
+      paused : false,
+      aborted : false
+    }
   };
 
   var loadedCSV = [],
@@ -18,7 +24,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     backupCSV = [],
     timers = {},
     useIterationsForTimestamp = false,
-    iteration = 0;
+    iteration = 0,
+    slidingWindow = appConfig.SLIDING_WINDOW,
+    streamParser = null,
+    firstDataLoaded = false;
 
   // the "Show/Hide Options" button
   $scope.toggleOptions = function() {
@@ -31,13 +40,25 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   };
 
   $scope.getRemoteFile = function() {
+    $scope.view.windowing.show = false;
+    $scope.view.windowing.paused = false;
+    $scope.view.windowing.aborted = false;
+    slidingWindow = false;
     $scope.$broadcast("fileUploadChange");
     $scope.view.loading = true;
     // we do a quick test here to see if the server supports the Range header.
     // If so, we try to stream. If not, we try to download.
     $http.head($scope.view.filePath,{'headers' : {'Range' : 'bytes=0-32'}}).then(function(response){
       if(response.status === 206) {
-        streamRemoteFile($scope.view.filePath);
+        // now we check to see how big the file is
+        $http.head($scope.view.filePath).then(function(response){
+          var contentLength = response.headers('Content-Length');
+          if (contentLength > appConfig.MAX_FILE_SIZE) {
+            slidingWindow = true;
+            $scope.view.windowing.show = true;
+          }
+          streamRemoteFile($scope.view.filePath);
+        });
       } else {
         downloadFile($scope.view.filePath);
       }
@@ -55,10 +76,35 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
   };
 
+  $scope.abortParse = function() {
+    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.abort)) {
+      streamParser.abort();
+      $scope.view.windowing.paused = false;
+      $scope.view.windowing.aborted = true;
+    }
+  };
+
+  $scope.pauseParse = function() {
+    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.pause)) {
+      streamParser.pause();
+      $scope.view.windowing.paused = true;
+    }
+  };
+
+  $scope.resumeParse = function() {
+    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.resume)) {
+      streamParser.resume();
+      $scope.view.windowing.paused = false;
+    }
+  };
+
   $scope.getLocalFile = function(event) {
     $scope.view.filePath = event.target.files[0].name;
+    if (event.target.files[0].size > appConfig.MAX_FILE_SIZE) {
+      slidingWindow = true;
+      $scope.view.windowing.show = true;
+    }
     $scope.view.loading = true;
-    // $scope.view.filePath = "";
     streamLocalFile(event.target.files[0]);
   };
 
@@ -68,13 +114,16 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   };
 
   var loadData = function(data) {
+    var tmpTime = -1;
     for (var rowId = 0; rowId < data.length; rowId++) {
       var arr = [];
       for (var colId = 0; colId < loadedFields.length; colId++) {
         var fieldName = loadedFields[colId];
-        var fieldValue = (useIterationsForTimestamp && fieldName === appConfig.TIMESTAMP) ? iteration++ : data[rowId][fieldName]; // read field's value
+        var fieldValue = data[rowId][fieldName]; // read field's value
         if (fieldName === appConfig.TIMESTAMP) { // dealing with timestamp. See generateFieldMap
-          if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
+          if (useIterationsForTimestamp) {
+            fieldValue = iteration++;
+          } else if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
             //fieldValue; // keep as is
           } else if (typeof(fieldValue) === "string" && parseDate(fieldValue) !== null) { // use date string timestamps
             fieldValue = parseDate(fieldValue);
@@ -82,6 +131,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
             handleError("Parsing timestamp failed, fallback to using iteration number", "warning", true);
             fieldValue = iteration;
           }
+          // check time monotonicity
+          if (fieldValue <= tmpTime) {
+            handleError("Your time is not monotonic at row "+rowId+"! Graphs are incorrect.", "danger", false);
+          }
+          tmpTime = fieldValue;
         } else { // process other (non-date) data columns
           // FIXME: this is an OPF "bug", should be discussed upstream
           if (fieldValue === "None") {
@@ -90,7 +144,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         }
         arr.push(fieldValue);
       }
-      if (appConfig.SLIDING_WINDOW && loadedCSV.length > appConfig.BUFFER_SIZE) {
+      if (slidingWindow && loadedCSV.length > appConfig.BUFFER_SIZE) {
         loadedCSV.shift();
         backupCSV.shift();
       }
@@ -104,7 +158,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         'file': loadedCSV
       });
     }
-    $scope.$apply();
+    if (!firstDataLoaded) {
+      $scope.$apply();
+      firstDataLoaded = true;
+    }
   };
 
   var resetFields = function() {
@@ -114,10 +171,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     $scope.view.dataField = null;
     $scope.view.errors.length = 0;
     $scope.view.loadedFileName = "";
+    //$scope.view.windowing.show = false;
+    //$scope.view.windowing.paused = false;
+    //$scope.view.windowing.aborted = false;
     useIterationsForTimestamp = false;
     iteration = 0;
     loadedCSV.length = 0;
     loadedFields.length = 0;
+    firstDataLoaded = false;
   };
 
   var downloadFile = function(url) {
@@ -134,7 +195,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           handleError("An error occurred when attempting to download file.", "danger");
         } else {
           $scope.view.loadedFileName = getRemoteFileName(url);
-          loadedFields = generateFieldMap(results.data[results.data.length - 1], appConfig.EXCLUDE_FIELDS);
+          loadedFields = generateFieldMap(results.data, appConfig.EXCLUDE_FIELDS);
           results.data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
           loadData(results.data);
         }
@@ -142,8 +203,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         $scope.$apply();
       },
       error: function(error) {
-        handleError("Could not download file.", "danger");
         $scope.view.loading = false;
+        handleError("Could not download file.", "danger");
       }
     });
   };
@@ -159,9 +220,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       dynamicTyping: true,
       worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
       comments: "#",
-      chunk: function(chunk) {
+      chunk: function(chunk, parser) {
         if (!firstChunkComplete) {
-          loadedFields = generateFieldMap(chunk.data[chunk.data.length - 1], appConfig.EXCLUDE_FIELDS);
+          streamParser = parser;
+          loadedFields = generateFieldMap(chunk.data, appConfig.EXCLUDE_FIELDS);
           firstChunkComplete = true;
         }
         loadData(chunk.data);
@@ -192,9 +254,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       dynamicTyping: true,
       worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
       comments: "#",
-      chunk: function(chunk) {
+      chunk: function(chunk, parser) {
         if (!firstChunkComplete) {
-          loadedFields = generateFieldMap(chunk.data[chunk.data.length - 1], appConfig.EXCLUDE_FIELDS);
+          streamParser = parser;
+          loadedFields = generateFieldMap(chunk.data, appConfig.EXCLUDE_FIELDS);
           firstChunkComplete = true;
         }
         loadData(chunk.data);
@@ -368,10 +431,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   };
 
   // say which fields will be plotted (all numeric - excluded)
-  // based on parsing the last (to omit Nones at the start) row of the data.
-  // return: matrix with numeric columns
+  // based on parsing the last-1 (to omit Nones at the start; and to avoid incompletely chunked row) 
+  // row of the data.
+  // return: array with names of numeric columns
   // If TIMESTAMP is not present, use iterations instead and set global useIterationsForTimestamp=true
-  var generateFieldMap = function(row, excludes) {
+  var generateFieldMap = function(rows, excludes) {
+    // take end-1th row to avoid incompletely loaded data due to chunk size
+    var row = rows[rows.length-2];
     if (!row.hasOwnProperty(appConfig.TIMESTAMP)) {
       handleError("No timestamp field was found, using iterations instead", "info");
       useIterationsForTimestamp = true; //global flag
