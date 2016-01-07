@@ -19,11 +19,15 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }, 
     monitor : { // online monitoring
       clock : null, // the function in setIteration
-      interval : appConfig.POLLING_INTERVAL, // dT
+      interval : 0, // dT
       lastChunkIter : 0, // helper, for speed we render only chunks with iter>last
     },
     file : { // info about the input file
       size : 0,
+      file : null,
+      name : null,
+      path : null,
+      loadingInProgress : false, // set true on start of file loading
     },
   };
 
@@ -66,44 +70,61 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   };
 
   // handle downloading (or Browsing) a local file
-  $scope.getLocalFile = function(event) {
-    $scope.view.filePath = event.target.files[0].name;
-    $scope.view.file.size = getFileSize(event.target.files[0]);
+  $scope.getLocalFile = function() {
     console.log("File size "+$scope.view.file.size);
     if ($scope.view.file.size > appConfig.MAX_FILE_SIZE) {
       slidingWindow = true;
       $scope.view.windowing.show = true;
     }
     $scope.view.loading = true;
-    downloadFile(event.target.files[0], "streamLocal");
+    downloadFile($scope.view.file.file, "streamLocal");
   };
 
   // main "load" function that supports both URL/local file
   // takes care of monitoring/streaming-data plots: if appConfig.POLLING_INTERVAL > 0 keep polling the file,sleeping
   $scope.loadFile = function(event) {
-    loadFileHelper(event);
-    if (appConfig.POLLING_INTERVAL > 0) {
+    // react to the file-selector event
+    if (event !== null) {
+      $scope.view.file.file = event.target.files[0];
+      $scope.view.file.name = $scope.view.file.file.name;
+      $scope.view.file.path = event.target.files[0].name;
+      $scope.view.filePath = $scope.view.file.path; //TODO remove this
+      $scope.view.file.size = getFileSize(event.target.files[0]);
+      console.log("File size "+$scope.view.file.size);
+    }
+    loadFileHelper();
+    setMonitoringTimer(appConfig.POLLING_INTERVAL); //FIXME create an entry element for numeric value in UI for this, each change should call setMonitoringTimer()
+  };
+
+  // set up interval for cuntinuous monotoring/timer
+  // param interval: in ms, <=0 means disabled
+  // do not start parallel timers, clear existing (and optionally set new)
+  var setMonitoringTimer = function(interval) {
+    if ($scope.view.monitor.clock !== null || interval <= 0) { //disable the old one
+      clearInterval($scope.view.monitor.clock); //invalidate
+      $scope.view.monitor.clock = null;
+      $scope.view.monitor.interval = 0;
+    }
+
+    if (interval > 0) {
       handleError("Monitoring mode started, update interval "+appConfig.POLLING_INTERVAL+"ms. ", "warning",true);
-      $scope.view.monitor.clock = setInterval(function () {loadFileHelper(event); console.log("troll");}, $scope.view.monitor.interval); //FIXME work with remote too
+      $scope.view.monitor.interval = interval;
+      $scope.view.monitor.clock = setInterval(function () {loadFileHelper(); console.log("updating...");}, $scope.view.monitor.interval); //FIXME work with remote too
     }
   };
 
   // helper fn for timer/monitoring in loadFile
-  var loadFileHelper = function(event) {
-    // react to change in POLLING_INTERVAL
-    if ($scope.view.monitor.interval != appConfig.POLLING_INTERVAL) {
-      console.log("Polling interval changed to"+appConfig.POLLING_INTERVAL);
-      clearInterval($scope.view.monitor.clock); //invalidate
-      if (appConfig.POLLING_INTERVAL > 0) { //set new value
-        $scope.view.monitor.interval = appConfig.POLLING_INTERVAL;
-        $scope.view.monitor.clock = setInterval(function (){loadFileHelper(event);}, appConfig.POLLING_INTERVAL);
-      }
+  var loadFileHelper = function() {
+    if ($scope.view.file.loadingInProgress) {
+      console.log("File was not completely read yet, cancelling another re-read till done!");
+      return;
     }
+    $scope.view.file.loadingInProgress = true;
     // call the file readers
     if ($scope.canDownload()) {
       $scope.getRemoteFile();
     } else {
-      $scope.getLocalFile(event);
+      $scope.getLocalFile();
     }
   };
 
@@ -271,6 +292,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       complete: function(results) {
         console.log("COMPLETED");
         $scope.view.monitor.lastChunkIter = iter;
+        $scope.view.file.loadingInProgress = false; //completed
         if (mode !== "download") {
           return;
         }
@@ -299,7 +321,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         // for speed reasons (on large files) in the online monitor mode, 
         // we skip renderning all but the last window
         // this technique only helps after the file was once read to the end (completed)
-        if(iter <= $scope.view.monitor.lastChunkIter) {
+        if(iter <= $scope.view.monitor.lastChunkIter && iter > 1) {
           console.log("Skipping: iter "+iter+" < = "+$scope.view.monitor.lastChunkIter);
           return;
         } else if (iter*appConfig.LOCAL_CHUNK_SIZE + 10*appConfig.LOCAL_CHUNK_SIZE < $scope.view.file.size) { //FIXME how ensure the safety buffer (10*XX) from CHUNK_SIZE (B) responds to BUFFER_SIZE (rows)
