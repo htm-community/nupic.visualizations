@@ -47,27 +47,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     slidingWindow = false;
     $scope.$broadcast("fileUploadChange");
     $scope.view.loading = true;
-    // we do a quick test here to see if the server supports the Range header.
-    // If so, we try to stream. If not, we try to download.
-    $http.head($scope.view.filePath,{'headers' : {'Range' : 'bytes=0-32'}}).then(
-     function(response){
-      if(response.status === 206) { //FIXME use canDownload and getFileSize to simplify this code, and test it!
-        // now we check to see how big the file is
-        $http.head($scope.view.filePath).then(function(response){
-          if (getFileSize(null, response.headers('Content-Length')) > appConfig.MAX_FILE_SIZE) {
-            slidingWindow = true;
-            $scope.view.windowing.show = true;
-          }
-          downloadFile($scope.view.filePath, "streamRemote");
-        });
-      } else {
-        downloadFile($scope.view.filePath, "download");
-      }
-     }, 
-     function() {
-      downloadFile($scope.view.filePath, "download");
-     }
-    );
+    var sz = getFileSize($scope.view.filePath);
+    console.log("size "+sz);
+    if ($scope.canDownload() && (getFileSize($scope.view.filePath) > appConfig.MAX_FILE_SIZE)) { 
+      console.log("streamig...");
+      downloadFile($scope.view.filePath, "streamRemote");
+    } else {
+      downloadFile($scope.view.filePath, "download"); // fallback, or small file
+    }  
   };
 
   // handle downloading (or Browsing) a local file
@@ -98,24 +85,43 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     if ((pathParts[0] === "https" || pathParts[0] === "http") && pathParts.length > 1 && pathParts[1].length > 0) {
       // we do a quick test here to see if the server supports the Range header.
       // If so, we try to stream. If not, we try to download.
+      try{
       $http.head($scope.view.filePath,{'headers' : {'Range' : 'bytes=0-32'}}).then(
-        function(response){ if(response.status === 206) { return true; } else { return false; } },
-        function() {return false;} //FIXME does this fn have to be here, as part of then()?
+        function(response){ 
+          if(response.status === 206) { 
+            console.log("server supports remote streaming");
+            return true; 
+          } else { 
+            handleError("Server does not support remote file streaming. (Missing Range HTTP header).", "danger", true);
+            return false; 
+          } 
+        },
+        function() {return false;}
       ); 
-    } else {
+      }catch(err) {
+        return false;
+      }
+    } else { // not a remote URL
       return false;
     }
   };
 
-  // get size of a file; one of the params must be specified, other can be null
-  // param file - file object
-  // param response - http response
+  // get size of a file
+  // param file - local File object, or URL(string) to a remote file
   // return number
-  var getFileSize = function(file, response) {
-    if (file !== null) {
+  var getFileSize = function(file) {
+    if (typeof(file)=="object") { // intentionally not ===
       return file.size;
     } else {
-      return response.headers('Content-Length');
+      $http.head(file).then(
+        function(response){
+          return response.headers('Content-Length');
+        }, 
+        function() {
+         handleError("Failed to get remote file's size", "danger", true);
+         return -1;
+        }
+      );
     }
   };
 
