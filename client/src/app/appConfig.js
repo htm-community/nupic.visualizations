@@ -33,11 +33,11 @@ angular.module('app').constant('appConfig', {
   SLIDING_WINDOW : false,
   // MAX_FILE_SIZE:
   // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur.  (default 5MB)
-  MAX_FILE_SIZE : 5120000,
+  MAX_FILE_SIZE : 5*1024*1024,
   // LOCAL_CHUNK_SIZE:
   // in Bytes
   // size in bytes of each chunk for the data stream, when reading local files
-  LOCAL_CHUNK_SIZE : 65536,
+  LOCAL_CHUNK_SIZE : 2*1024*1024,
   // REMOTE_CHUNK_SIZE:
   // in Bytes
   // size in bytes of each chunk for the data stream, when reading files over a network.

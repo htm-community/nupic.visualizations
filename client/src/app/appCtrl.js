@@ -210,6 +210,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
 
  
   var loadData = function(data) {
+    console.log("SLOW");
     var tmpTime = -1;
     for (var rowId = 0; rowId < data.length; rowId++) {
       var arr = [];
@@ -333,6 +334,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           console.log("Skipping 2: iter "+iter+", bytes read "+iter*appConfig.LOCAL_CHUNK_SIZE+" < "+$scope.view.file.size);
           return;
         } else {
+          console.log("working");
           loadData(chunk.data); // parsing and rendering is slow
         }
       },
