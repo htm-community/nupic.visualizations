@@ -20,7 +20,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     highlighting : { // section for highlighting (anomalie) over a threshold
       fieldName : "sine", //TODO add UI control
       threshold : 0.8, // UI control
-      color : "rgba(0, 254, 0, 0.7)",
+      color : "rgba(255,50,0,0.6)",
       radius : 10, //in "steps" of xdata values
       finished : true, // sync variable, so we wait till started run of highlightAnomaly finishes
     },
@@ -573,7 +573,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       var canvas_left_x = g.toDomXCoord(x_start);
       var canvas_right_x = g.toDomXCoord(x_end);
       var canvas_width = canvas_right_x - canvas_left_x;
-      canvas.fillStype = color;
+      canvas.fillStyle = color;
       canvas.fillRect(canvas_left_x, area.y, canvas_width, area.h);
     }
 
