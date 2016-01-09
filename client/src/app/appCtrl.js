@@ -564,9 +564,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     if($scope.view.highlighting.finished === false) {
       return;
     }
-    console.log("highlighting...");
     $scope.view.highlighting.finished = false;
-    var timeIdx;
+    var timeIdx = loadedFields.indexOf(appConfig.TIMESTAMP);
+    var time;
+    var value;
 
     // draw rectangle on x0..x1
     function highlight_period(x_start, x_end, color) {
@@ -585,15 +586,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       var fnIdx = loadedFields.indexOf(watchedFieldName);
       if (fnIdx === -1) {
         handleError("Highlighting cannot work, field "+watchedFieldName+" not found!", "danger", true);
-        return results;
+        return [];
       }
-      timeIdx = loadedFields.indexOf(appConfig.TIMESTAMP);
       for( var i=0; i< data.length; i++) {
-        var row = data[i];
+        value = data[i][fnIdx];
         // the condition is here
-        if (row[fnIdx] >= threshold) {
-          var time = row[timeIdx];
-          //console.log("found anomaly at "+time+" with value "+row[fnIdx]);
+        if (value >= threshold) {
+          var time = data[i][timeIdx];
+          //console.log("Found anomaly at "+time+" with value "+value);
           results.push(time);
         }
       }
@@ -608,7 +608,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     for (var i=0; i < selected.length; i++) {
       highlight_period(selected[i]-modDt, selected[i]+modDt, $scope.view.highlighting.color);
     }
-
     $scope.view.highlighting.finished = true;
   } // end highlightAnomaly callback
 
