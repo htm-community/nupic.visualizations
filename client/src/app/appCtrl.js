@@ -144,6 +144,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
             handleError("Your time is not monotonic at row "+rowId+"! Graphs are incorrect.", "danger", false);
           }
           tmpTime = fieldValue;
+        } else if (fieldName === 'threshold*' ) { // artificial field for anomaly detection threshold
+          fieldValue = $scope.view.highlighting.threshold; 
         } else { // process other (non-date) data columns
           // FIXME: this is an OPF "bug", should be discussed upstream
           if (fieldValue === "None") {
@@ -459,6 +461,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     });
     // timestamp assumed to be at the beginning of the array
     headerFields.unshift(appConfig.TIMESTAMP); //append timestamp as 1st field
+
+    // add 'threshold' field for anomaly detection
+    headerFields.push('threshold*');
+
     return headerFields;
   };
 
