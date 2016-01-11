@@ -16,7 +16,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       size : -1, // changed to WINDOW_SIZE on 'windowing' / large files. //TODO add UI for this?
       show : false,
       paused : false,
-      aborted : false
+      aborted : false,
+      update_interval : 1, //FIXME Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
     }
   };
 
@@ -122,8 +123,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         var fieldName = loadedFields[colId];
         var fieldValue = data[rowId][fieldName]; // read field's value
         if (fieldName === appConfig.TIMESTAMP) { // dealing with timestamp. See generateFieldMap
+          iteration++;
           if (useIterationsForTimestamp) {
-            fieldValue = iteration++;
+            fieldValue = iteration;
           } else if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
             //fieldValue; // keep as is
           } else if (typeof(fieldValue) === "string" && parseDate(fieldValue) !== null) { // use date string timestamps
@@ -134,7 +136,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           }
           // check time monotonicity
           if (fieldValue <= tmpTime) {
-            handleError("Your time is not monotonic at row "+rowId+"! Graphs are incorrect.", "danger", false);
+            handleError("Your time is not monotonic at row "+iteration+"! Graphs are incorrect.", "danger", false);
             console.log("Incorrect timestamp!");
             console.log(data[rowId]);
             console.log(data[rowId-1]);
@@ -162,10 +164,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
     if ($scope.view.graph === null) {
       renderGraph();
-    } else {
-      $scope.view.graph.updateOptions({
-        'file': loadedCSV
-      });
+    } else if ((iteration % $scope.view.windowing.update_interval) === 0){
+      console.log("render "+$scope.view.windowing.update_interval+ " iter="+iteration+" CSV sz="+loadedCSV.length );
+      $scope.view.graph.updateOptions({'file': loadedCSV });
     }
     if (!firstDataLoaded) {
       $scope.$apply();
