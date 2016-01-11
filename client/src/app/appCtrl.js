@@ -132,6 +132,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           // check time monotonicity
           if (fieldValue <= tmpTime) {
             handleError("Your time is not monotonic at row "+rowId+"! Graphs are incorrect.", "danger", false);
+            console.log("Incorrect timestamp!");
+            console.log(data[rowId]);
+            console.log(data[rowId-1]);
           }
           tmpTime = fieldValue;
         } else { // process other (non-date) data columns
