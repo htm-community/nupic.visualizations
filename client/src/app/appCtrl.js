@@ -135,6 +135,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
             console.log("Incorrect timestamp!");
             console.log(data[rowId]);
             console.log(data[rowId-1]);
+            // break; //commented out = just inform
           }
           tmpTime = fieldValue;
         } else { // process other (non-date) data columns
@@ -148,6 +149,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       if (appConfig.BUFFER_SIZE !== -1 && loadedCSV.length > appConfig.BUFFER_SIZE) { // sliding window
         loadedCSV.shift();
         backupCSV.shift();
+      }
+      if (arr.length !== loadedFields.length) {
+        console.log("Incomplete row loaded "+arr+"; skipping.");
+        continue;
       }
       loadedCSV.push(arr);
       backupCSV.push(angular.extend([], arr));
