@@ -118,7 +118,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   var loadData = function(data) {
     var tmpTime = -1;
     for (var rowId = 0; rowId < data.length; rowId++) {
-      var arr = [];
+      var row = [];
       for (var colId = 0; colId < loadedFields.length; colId++) {
         var fieldName = loadedFields[colId];
         var fieldValue = data[rowId][fieldName]; // read field's value
@@ -149,18 +149,18 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
             fieldValue = appConfig.NONE_VALUE_REPLACEMENT;
           }
         }
-        arr.push(fieldValue);
+        row.push(fieldValue);
       }
       if ($scope.view.windowing.size !== -1 && loadedCSV.length > $scope.view.windowing.size) { // sliding window trim
         loadedCSV.shift();
         backupCSV.shift();
       }
-      if (arr.length !== loadedFields.length) {
-        console.log("Incomplete row loaded "+arr+"; skipping.");
+      if (row.length !== loadedFields.length) {
+        console.log("Incomplete row loaded "+row+"; skipping.");
         continue;
       }
-      loadedCSV.push(arr);
-      backupCSV.push(angular.extend([], arr));
+      loadedCSV.push(row);
+      backupCSV.push(angular.extend([], row));
     }
     if ($scope.view.graph === null) {
       renderGraph();
