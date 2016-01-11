@@ -12,7 +12,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     errors: [],
     loading: false,
     windowing : {
-      threshold : appConfig.MAX_FILE_SIZE,
+      threshold : appConfig.MAX_FILE_SIZE, 
+      slidingWindow = appConfig.SLIDING_WINDOW, 
       show : false,
       paused : false,
       aborted : false
@@ -25,7 +26,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     timers = {},
     useIterationsForTimestamp = false,
     iteration = 0,
-    slidingWindow = appConfig.SLIDING_WINDOW,
     streamParser = null,
     firstDataLoaded = false;
 
@@ -43,7 +43,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     $scope.view.windowing.show = false;
     $scope.view.windowing.paused = false;
     $scope.view.windowing.aborted = false;
-    slidingWindow = false;
+    $scope.view.windowing.slidingWindow = false;
     $scope.$broadcast("fileUploadChange");
     $scope.view.loading = true;
     // we do a quick test here to see if the server supports the Range header.
@@ -54,7 +54,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         $http.head($scope.view.filePath).then(function(response){
           var contentLength = response.headers('Content-Length');
           if (contentLength > appConfig.MAX_FILE_SIZE) {
-            slidingWindow = true;
+            $scope.view.windowing.slidingWindow = true;
             $scope.view.windowing.show = true;
           }
           streamRemoteFile($scope.view.filePath);
@@ -101,7 +101,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   $scope.getLocalFile = function(event) {
     $scope.view.filePath = event.target.files[0].name;
     if (event.target.files[0].size > appConfig.MAX_FILE_SIZE) {
-      slidingWindow = true;
+      $scope.view.windowing.slidingWindow.slidingWindow = true;
       $scope.view.windowing.show = true;
     }
     $scope.view.loading = true;
@@ -144,7 +144,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         }
         arr.push(fieldValue);
       }
-      if (slidingWindow && loadedCSV.length > appConfig.BUFFER_SIZE) {
+      if ($scope.view.windowing.slidingWindow && loadedCSV.length > appConfig.BUFFER_SIZE) {
         loadedCSV.shift();
         backupCSV.shift();
       }
