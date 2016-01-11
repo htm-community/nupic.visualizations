@@ -13,7 +13,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loading: false,
     windowing : {
       threshold : appConfig.MAX_FILE_SIZE, 
-      slidingWindow = appConfig.SLIDING_WINDOW, 
+      slidingWindow : appConfig.SLIDING_WINDOW, 
       show : false,
       paused : false,
       aborted : false
@@ -53,9 +53,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         // now we check to see how big the file is
         $http.head($scope.view.filePath).then(function(response){
           var contentLength = response.headers('Content-Length');
-          if (contentLength > appConfig.MAX_FILE_SIZE) {
+          if (contentLength > appConfig.MAX_FILE_SIZE && appConfig.MAX_FILE_SIZE !== -1) {
             $scope.view.windowing.slidingWindow = true;
             $scope.view.windowing.show = true;
+            handleError("File too large, automatic sliding window enabled.", "warning");
           }
           streamRemoteFile($scope.view.filePath);
         });
@@ -100,9 +101,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
 
   $scope.getLocalFile = function(event) {
     $scope.view.filePath = event.target.files[0].name;
-    if (event.target.files[0].size > appConfig.MAX_FILE_SIZE) {
+    if (event.target.files[0].size > appConfig.MAX_FILE_SIZE && appConfig.MAX_FILE_SIZE !== -1) {
       $scope.view.windowing.slidingWindow.slidingWindow = true;
       $scope.view.windowing.show = true;
+      handleError("File too large, automatic sliding window enabled.", "warning");
     }
     $scope.view.loading = true;
     streamLocalFile(event.target.files[0]);
