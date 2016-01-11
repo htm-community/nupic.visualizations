@@ -13,7 +13,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loading: false,
     windowing : {
       threshold : appConfig.MAX_FILE_SIZE, 
-      slidingWindow : appConfig.SLIDING_WINDOW, 
       show : false,
       paused : false,
       aborted : false
@@ -43,7 +42,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     $scope.view.windowing.show = false;
     $scope.view.windowing.paused = false;
     $scope.view.windowing.aborted = false;
-    $scope.view.windowing.slidingWindow = false;
     $scope.$broadcast("fileUploadChange");
     $scope.view.loading = true;
     // we do a quick test here to see if the server supports the Range header.
@@ -54,7 +52,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         $http.head($scope.view.filePath).then(function(response){
           var contentLength = response.headers('Content-Length');
           if (contentLength > appConfig.MAX_FILE_SIZE && appConfig.MAX_FILE_SIZE !== -1) {
-            $scope.view.windowing.slidingWindow = true;
             $scope.view.windowing.show = true;
             handleError("File too large, automatic sliding window enabled.", "warning");
           }
@@ -102,7 +99,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   $scope.getLocalFile = function(event) {
     $scope.view.filePath = event.target.files[0].name;
     if (event.target.files[0].size > appConfig.MAX_FILE_SIZE && appConfig.MAX_FILE_SIZE !== -1) {
-      $scope.view.windowing.slidingWindow.slidingWindow = true;
       $scope.view.windowing.show = true;
       handleError("File too large, automatic sliding window enabled.", "warning");
     }
@@ -146,7 +142,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         }
         arr.push(fieldValue);
       }
-      if ($scope.view.windowing.slidingWindow && loadedCSV.length > appConfig.BUFFER_SIZE) {
+      if (appConfig.BUFFER_SIZE !== -1 && loadedCSV.length > appConfig.BUFFER_SIZE) { // sliding window
         loadedCSV.shift();
         backupCSV.shift();
       }

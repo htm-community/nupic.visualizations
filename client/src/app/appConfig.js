@@ -24,12 +24,11 @@ angular.module('app').constant('appConfig', {
   // We replace the with this value, defaults to 0.
   NONE_VALUE_REPLACEMENT : 0,
   // BUFFER:
-  // buffer size used for DyGraph streaming, default 1000
-  BUFFER_SIZE : 10000,
-  // SLIDING_WINDOW:
-  // True = each batch existing values are dropped, new BUFFER_SIZE is painted. Graph will "move to the right".
-  // False = data never dropped, just append. Graph will "shrink". (default)
-  SLIDING_WINDOW : false,
+  // controls windowing functionality,
+  // buffer size used for DyGraph streaming, default 10000
+  // each batch existing values are dropped, new BUFFER_SIZE is painted. Graph will "move to the right".
+  // -1 : data never dropped, just append. Graph will "shrink". (default)
+  BUFFER_SIZE : -1,
   // MAX_FILE_SIZE:
   // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur.
   // -1 to disable the functionality (can cause performance problems on large files/online monitoring)
