@@ -12,7 +12,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     errors: [],
     loading: false,
     windowing : {
-      threshold : appConfig.MAX_FILE_SIZE, 
+      threshold : appConfig.MAX_FILE_SIZE,
+      size : -1, // changed to WINDOW_SIZE on 'windowing' / large files. //TODO add UI for this?
       show : false,
       paused : false,
       aborted : false
@@ -53,6 +54,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           var contentLength = response.headers('Content-Length');
           if (contentLength > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
             $scope.view.windowing.show = true;
+            $scope.view.windowing.size = appConfig.WINDOW_SIZE;
             handleError("File too large, automatic sliding window enabled.", "warning");
           }
           streamRemoteFile($scope.view.filePath);
@@ -100,6 +102,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     $scope.view.filePath = event.target.files[0].name;
     if (event.target.files[0].size > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
       $scope.view.windowing.show = true;
+      $scope.view.windowing.size = appConfig.WINDOW_SIZE;
       handleError("File too large, automatic sliding window enabled.", "warning");
     }
     $scope.view.loading = true;
@@ -146,7 +149,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         }
         arr.push(fieldValue);
       }
-      if (appConfig.BUFFER_SIZE !== -1 && loadedCSV.length > appConfig.BUFFER_SIZE) { // sliding window
+      if ($scope.view.windowing.size !== -1 && loadedCSV.length > $scope.view.windowing.size) { // sliding window trim
         loadedCSV.shift();
         backupCSV.shift();
       }

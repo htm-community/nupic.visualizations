@@ -23,16 +23,16 @@ angular.module('app').constant('appConfig', {
   // (has to be determined at the last row), but their first few values are "None".
   // We replace the with this value, defaults to 0.
   NONE_VALUE_REPLACEMENT : 0,
-  // BUFFER:
+  // WINDOW_SIZE:
   // controls windowing functionality,
-  // buffer size used for DyGraph streaming, default 10000
-  // each batch existing values are dropped, new BUFFER_SIZE is painted. Graph will "move to the right".
-  // -1 : data never dropped, just append. Graph will "shrink". (default)
-  BUFFER_SIZE : -1,
+  // buffer size (in rows/items) used for DyGraph streaming, default 10000
+  // each batch existing values are dropped, new WINDOW_SIZE is painted. Graph will "move to the right".
+  // -1 : data never dropped, just append. Graph will "shrink".
+  WINDOW_SIZE : 10000,
   // MAX_FILE_SIZE:
-  // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur.
+  // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur. (default 60MB)
   // -1 to disable the functionality (can cause performance problems on large files/online monitoring)
-  MAX_FILE_SIZE : -1,
+  MAX_FILE_SIZE : 60*1024*1024,
   // LOCAL_CHUNK_SIZE:
   // size in bytes of each chunk for the data stream, when reading local files
   LOCAL_CHUNK_SIZE : 65536,
