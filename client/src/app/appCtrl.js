@@ -17,7 +17,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       show : false,
       paused : false,
       aborted : false,
-      update_interval : Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
+      update_interval : 1, //FIXME Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
     }
   };
 
@@ -138,8 +138,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           if (fieldValue <= tmpTime) {
             handleError("Your time is not monotonic at row "+iteration+"! Graphs are incorrect.", "danger", false);
             console.log("Incorrect timestamp!");
-            console.log(data[rowId]);
-            console.log(data[rowId-1]);
             break; //commented out = just inform, break = skip row
           }
           tmpTime = fieldValue;
@@ -166,7 +164,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     if ($scope.view.graph === null) {
       renderGraph();
     } else if ((iteration % $scope.view.windowing.update_interval) === 0){
-      console.log("render "+$scope.view.windowing.update_interval+ " iter="+iteration+" CSV sz="+loadedCSV.length );
+      //console.log("render "+$scope.view.windowing.update_interval+ " iter="+iteration+" CSV sz="+loadedCSV.length );
       $scope.view.graph.updateOptions({'file': loadedCSV });
     }
     if (!firstDataLoaded) {
