@@ -27,6 +27,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     timers = {},
     useIterationsForTimestamp = false,
     iteration = 0,
+    resetFieldIdx = -1,
     streamParser = null,
     firstDataLoaded = false;
 
@@ -135,7 +136,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
             fieldValue = iteration;
           }
           // check time monotonicity
-          if (fieldValue <= tmpTime) {
+          if (fieldValue <= tmpTime && data[rowId][resetFieldIdx] !== 1) {
             handleError("Your time is not monotonic at row "+iteration+"! Graphs are incorrect.", "danger", false);
             console.log("Incorrect timestamp!");
             break; //commented out = just inform, break = skip row
@@ -461,6 +462,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     if (header.indexOf(appConfig.TIMESTAMP) === -1) {
       handleError("No timestamp field was found, using iterations instead", "info");
       useIterationsForTimestamp = true; //global flag
+    } else if (isOPF && resetFieldIdx !== -1) { //TODO fix later support for OPF resets?
+      handleError("OPF file with resets not supported. Ignoring timestamp and using iterations instead.", "info");
+      useIterationsForTimestamp = true; //global flag
+      //FIXME add new field time with orig time values
     }
     // add all numeric fields not in excludes
     var row = rows[rows.length-2]; // take end-1th row to avoid incompletely loaded data due to chunk size
@@ -469,12 +474,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     for(var j=0; j<header.length; j++) {
       var value = row.data[0][j]; // Papa results structure
       var key = header[j];
-      if ((typeof(value) === "number") && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
+      if ((typeof(value) === "number") && excludes.indexOf(key) === -1) {
         headerFields.push(key);
       }
     }
-    // timestamp assumed to be at the beginning of the array
-    headerFields.unshift(appConfig.TIMESTAMP); //append timestamp as 1st field
+    if (headerFields.indexOf(appConfig.TIMESTAMP) === -1) { //missing
+      headerFields.unshift(appConfig.TIMESTAMP); //append timestamp as 1st field
+    }
     return headerFields;
   };
 
