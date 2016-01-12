@@ -17,7 +17,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       show : false,
       paused : false,
       aborted : false,
-      update_interval : 1, //FIXME Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
+      update_interval : Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
     }
   };
 
@@ -140,7 +140,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
             console.log("Incorrect timestamp!");
             console.log(data[rowId]);
             console.log(data[rowId-1]);
-            // break; //commented out = just inform
+            break; //commented out = just inform, break = skip row
           }
           tmpTime = fieldValue;
         } else { // process other (non-date) data columns
@@ -151,16 +151,17 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         }
         row.push(fieldValue);
       }
-      if ($scope.view.windowing.size !== -1 && loadedCSV.length > $scope.view.windowing.size) { // sliding window trim
-        loadedCSV.shift();
-        backupCSV.shift();
-      }
       if (row.length !== loadedFields.length) {
         console.log("Incomplete row loaded "+row+"; skipping.");
         continue;
       }
       loadedCSV.push(row);
       backupCSV.push(angular.extend([], row));
+
+      if ($scope.view.windowing.size !== -1 && loadedCSV.length > $scope.view.windowing.size) { // sliding window trim
+        loadedCSV.shift();
+        backupCSV.shift();
+      }
     }
     if ($scope.view.graph === null) {
       renderGraph();
