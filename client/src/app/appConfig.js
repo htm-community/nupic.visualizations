@@ -9,12 +9,10 @@ angular.module('app').constant('appConfig', {
   EXCLUDE_FIELDS : [],
   // HEADER_SKIPPED_ROWS:
   // number of rows (between 2nd .. Nth, included) skipped.
-  // For OPF this must be >= 2 (as 2nd row is 'float,float,float', 3rd: ',,' metadata)
-  // You can increase this (to about 2000) to skip untrained HTM predictions at the beginning
+  // For OPF this must be >= 3 (as 2nd row is 'float,float,float', 3rd: ',,' metadata)
+  // Tip: You can increase this (to about 2000) to skip untrained HTM predictions at the beginning
   // (eg. data where anomalyScore = 0.5 at the start).
-  // Warning: default 2 is used, so for non-OPF data you lose the first 2 data points
-  // (we find that acceptable).
-  HEADER_SKIPPED_ROWS : 2,
+  HEADER_SKIPPED_ROWS : 1,
   // ZOOM:
   // toggle 2 methods of zooming in the graph: "RangeSelector", "HighlightSelector" (=mouse)
   ZOOM : "HighlightSelector",

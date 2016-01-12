@@ -230,19 +230,17 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
       comments: "#",
       chunk: function(chunk, parser) {
-        if (!firstChunkComplete) {
-          streamParser = parser;
-          loadedFields = generateFieldMap(chunk.data, appConfig.EXCLUDE_FIELDS);
-          firstChunkComplete = true;
-        }
+        streamParser = parser;
         loadData(chunk.data);
       },
       beforeFirstChunk: function(chunk) {
         $scope.view.loadedFileName = getRemoteFileName(url);
         var rows = chunk.split(/\r\n|\r|\n/);
+        loadedFields = generateFieldMap(rows, appConfig.EXCLUDE_FIELDS);
         rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
         $scope.view.loading = false;
-        return rows.join('\n');
+        rows = rows.join('\n');
+        return rows;
       },
       //fastMode: true, // automatically enabled if no " appear
       error: function(error) {
@@ -264,19 +262,17 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
       comments: "#",
       chunk: function(chunk, parser) {
-        if (!firstChunkComplete) {
-          streamParser = parser;
-          loadedFields = generateFieldMap(chunk.data, appConfig.EXCLUDE_FIELDS);
-          firstChunkComplete = true;
-        }
+        streamParser = parser;
         loadData(chunk.data);
       },
       beforeFirstChunk: function(chunk) {
         $scope.view.loadedFileName = file.name;
         var rows = chunk.split(/\r\n|\r|\n/);
+        loadedFields = generateFieldMap(rows, appConfig.EXCLUDE_FIELDS);
         rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
         $scope.view.loading = false;
-        return rows.join('\n');
+        rows = rows.join('\n');
+        return rows;
       },
       //fastMode: true, // automatically enabled if no " appear
       error: function(error) {
@@ -330,7 +326,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     var dashDate = dateTime[0].split("-");
     if ((slashDate.length === 1 && dashDate.length === 1) || (slashDate.length > 1 && dashDate.length > 1)) {
       // if there were no instances of delimiters, or we have both delimiters when we should only have one
-      handleError("Could not parse the timestamp", "warning", true);
+      handleError("Could not parse the timestamp: "+strDateTime, "warning", true);
       return null;
     }
     // if it is a dash date, it is probably in this format: yyyy:mm:dd
@@ -444,20 +440,39 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // row of the data.
   // return: array with names of numeric columns
   // If TIMESTAMP is not present, use iterations instead and set global useIterationsForTimestamp=true
+  // also determine if dealing with OPF file and use its special format (skip 3 header rows, ...)
   var generateFieldMap = function(rows, excludes) {
-    // take end-1th row to avoid incompletely loaded data due to chunk size
-    var row = rows[rows.length-2];
-    if (!row.hasOwnProperty(appConfig.TIMESTAMP)) {
+    var header = rows[0].split(',');
+    // OPF
+    var meta = Papa.parse(rows[2], {dynamicTyping: true, skipEmptyLines: true, comments: '#'}).data[0]; // to get correct data-types
+    var isOPF = true; //determine OPF by having only meta chars at 3rd row (not numeric, unlike normal data)
+    for(var i=0; i< meta.length; i++) {
+      if(typeof(meta[i]) === "number") {
+        isOPF = false;
+      } else if (meta[i] === 'R' || meta[i] === 'r') {
+        resetFieldIdx = i;
+      }
+    }
+    if (isOPF) {
+      console.log("Detected OPF/NuPIC file. ");
+      appConfig.HEADER_SKIPPED_ROWS = 3; //default for OPF
+    }
+
+    if (header.indexOf(appConfig.TIMESTAMP) === -1) {
       handleError("No timestamp field was found, using iterations instead", "info");
       useIterationsForTimestamp = true; //global flag
     }
     // add all numeric fields not in excludes
+    var row = rows[rows.length-2]; // take end-1th row to avoid incompletely loaded data due to chunk size
+    row = Papa.parse(row, {dynamicTyping: true, skipEmptyLines: true, comments: '#'}); // to get correct data-types
     var headerFields = [];
-    angular.forEach(row, function(value, key) {
+    for(var j=0; j<header.length; j++) {
+      var value = row.data[0][j]; // Papa results structure
+      var key = header[j];
       if ((typeof(value) === "number") && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
         headerFields.push(key);
       }
-    });
+    }
     // timestamp assumed to be at the beginning of the array
     headerFields.unshift(appConfig.TIMESTAMP); //append timestamp as 1st field
     return headerFields;
