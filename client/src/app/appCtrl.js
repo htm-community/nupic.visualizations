@@ -1,6 +1,6 @@
 // Web UI:
 
-angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'appConfig', function($scope, $http, $timeout, appConfig) {
+angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'appConfig', '$interval', function($scope, $http, $timeout, appConfig, $interval) {
 
   $scope.view = {
     fieldState: [],
@@ -20,7 +20,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       update_interval : 1, //FIXME Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
     }, 
     monitor : { // online monitoring
-      clock : null, // the function in setIteration
+      clock : undefined, // the function in setIteration
       interval : 0, // dT
       lastChunkIter : 0, // helper, for speed we render only chunks with iter>last
     },
@@ -104,16 +104,16 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // param interval: in ms, <=0 means disabled
   // do not start parallel timers, clear existing (and optionally set new)
   var setMonitoringTimer = function(interval) {
-    if ($scope.view.monitor.clock !== null || interval <= 0) { //disable the old one
-      clearInterval($scope.view.monitor.clock); //invalidate //FIXME clear/setInterval should use AngularJS impl.
-      $scope.view.monitor.clock = null;
+    if (angular.isDefined($scope.view.monitor.clock) || interval <= 0) { //disable the old one
+      $interval.cancel($scope.view.monitor.clock); //invalidate 
+      $scope.view.monitor.clock = undefined;
       $scope.view.monitor.interval = 0;
     }
 
     if (interval > 0) {
       handleError("Monitoring mode started, update interval "+appConfig.POLLING_INTERVAL+"ms. ", "warning",true);
       $scope.view.monitor.interval = interval;
-      $scope.view.monitor.clock = setInterval(function () {loadFileHelper(); console.log("updating...");}, $scope.view.monitor.interval); //FIXME work with remote too
+      $scope.view.monitor.clock = $interval(function () {loadFileHelper(); console.log("updating...");}, $scope.view.monitor.interval); //FIXME work with remote too
     }
   };
 
