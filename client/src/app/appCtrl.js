@@ -54,37 +54,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
   };
 
-  // handle downloading (or streaming, if supported) a remote file (from URL => canDownload==True)
-  $scope.getRemoteFile = function() {
-    $scope.view.windowing.show = false;
-    $scope.view.windowing.paused = false;
-    $scope.view.windowing.aborted = false;
-    $scope.$broadcast("fileUploadChange");
-    $scope.view.loading = true;
-    $scope.view.file.size = getFileSize($scope.view.filePath);
-    console.log("File size "+$scope.view.file.size);
-    if ($scope.canDownload() && $scope.view.file.size > appConfig.MAX_FILE_SIZE) { 
-      console.log("streamig...");
-      downloadFile($scope.view.filePath, "streamRemote");
-    } else {
-      downloadFile($scope.view.filePath, "download"); // fallback, or small file
-    }  
-  };
-
-  // handle downloading (or Browsing) a local file
-  $scope.getLocalFile = function() {
-    // update file size for local files
-    $scope.view.file.size = getFileSize($scope.view.file.file);
-    console.log("File size "+$scope.view.file.size);
-    if ($scope.view.file.size > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
-      $scope.view.windowing.show = true;
-      $scope.view.windowing.size = appConfig.WINDOW_SIZE;
-      handleError("File too large, automatic sliding window enabled.", "warning");
-    }
-    $scope.view.loading = true;
-    downloadFile($scope.view.file.file, "streamLocal");
-  };
-
   // main "load" function that supports both URL/local file
   // takes care of monitoring/streaming-data plots: if appConfig.POLLING_INTERVAL > 0 keep polling the file,sleeping
   $scope.loadFile = function(event) {
@@ -96,7 +65,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       $scope.view.filePath = $scope.view.file.path; //TODO remove this
     }
     $scope.canDownload(); // will set the local file= true/false
-    loadFileHelper();
+    loadFile();
     setMonitoringTimer(appConfig.POLLING_INTERVAL); //FIXME create an entry element for numeric value in UI for this, each change should call setMonitoringTimer()
   };
 
@@ -113,22 +82,44 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     if (interval > 0) {
       handleError("Monitoring mode started, update interval "+appConfig.POLLING_INTERVAL+"ms. ", "warning",true);
       $scope.view.monitor.interval = interval;
-      $scope.view.monitor.clock = $interval(function () {loadFileHelper(); console.log("updating...");}, $scope.view.monitor.interval); //FIXME work with remote too
+      $scope.view.monitor.clock = $interval(function () {loadFile(); console.log("updating...");}, $scope.view.monitor.interval); //FIXME work with remote too
     }
   };
 
   // helper fn for timer/monitoring in loadFile
-  var loadFileHelper = function() {
+  var loadFile = function() {
     if ($scope.view.file.loadingInProgress) {
       console.log("File was not completely read yet, cancelling another re-read till done!");
       return;
     }
     $scope.view.file.loadingInProgress = true;
+    $scope.view.loading = true;
+
     // call the file readers
     if ($scope.view.file.local) {
-      $scope.getLocalFile();
-    } else {
-      $scope.getRemoteFile();
+      // update file size for local files
+      $scope.view.file.size = getFileSize($scope.view.file.file);
+      if ($scope.view.file.size > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
+        $scope.view.windowing.show = true;
+        $scope.view.windowing.size = appConfig.WINDOW_SIZE;
+        handleError("File too large, automatic sliding window enabled.", "warning");
+      }
+      downloadFile($scope.view.file.file, "streamLocal");
+
+    } else { // handle remote download, or streaming (if supported; canDownload == true)
+      $scope.view.windowing.show = false;
+      $scope.view.windowing.paused = false;
+      $scope.view.windowing.aborted = false;
+      $scope.$broadcast("fileUploadChange");
+      $scope.view.file.size = getFileSize($scope.view.filePath);
+      console.log("File size "+$scope.view.file.size);
+      if ($scope.canDownload() && $scope.view.file.size > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
+        console.log("streamig...");
+        downloadFile($scope.view.filePath, "streamRemote");
+      } else {
+        downloadFile($scope.view.filePath, "download"); // fallback, or small file
+      }
+
     }
   };
 
