@@ -55,65 +55,51 @@
         </div>
       </div>
       <div class="row graphs">
-        <div class="col-md-12">
+        <div class="show-options" ng-show="view.graph">
+          <button class="btn btn-default btn-sm pull-right options-toggle" ng-click="toggleOptions()"><span class="glyphicon glyphicon-triangle-left" ng-show="view.optionsVisible"></span> <span ng-hide="view.optionsVisible">Show</span><span ng-show="view.optionsVisible">Hide</span> Options <span class="glyphicon glyphicon-triangle-right" ng-show="!view.optionsVisible"></span></button>
+        </div>
+        <div ng-class="{'col-md-6' : view.optionsVisible, 'col-md-12' : !view.optionsVisible}">
           <h3 class="file-name-label">{{view.loadedFileName}}</h3>
-          <div ng-class="{'col-md-6' : view.optionsVisible, 'col-md-8' : !view.optionsVisible}">
-            <div class="loading" ng-show="view.loading"><span class="loading-spin"></span></div>
-            <div class="graph" id="dataContainer"></div>
+          <div class="loading" ng-show="view.loading"><span class="loading-spin"></span></div>
+          <div class="graph" id="dataContainer"></div>
+        </div>
+        <div class="fields col-md-6" ng-show="view.optionsVisible && view.graph">
+          <div class="row">
+            <div class="col-md-12">
+              <div class="btn-group">
+                <button class="btn btn-default btn-sm" ng-click="showHideAll(true)">Show All</button>
+                <button class="btn btn-default btn-sm" ng-click="showHideAll(false)">Hide All</button>
+              </div>
+            </div>
           </div>
-          <div class="fields" ng-class="{'col-md-6' : view.optionsVisible, 'col-md-4' : !view.optionsVisible}" ng-show="view.graph">
-            <div class="row">
-              <div class="col-md-12">
-                <div class="btn-group">
-                  <button class="btn btn-default btn-sm" ng-click="showHideAll(true)">Show All</button>
-                  <button class="btn btn-default btn-sm" ng-click="showHideAll(false)">Hide All</button>
-                </div>
-                <button class="btn btn-default btn-sm pull-right options-toggle" ng-click="toggleOptions()"><span class="glyphicon glyphicon-triangle-left" ng-show="view.optionsVisible"></span> <span ng-hide="view.optionsVisible">Show</span><span ng-show="view.optionsVisible">Hide</span> Options <span class="glyphicon glyphicon-triangle-right" ng-show="!view.optionsVisible"></span></button>
-              </div>
+          <div class="row">
+            <div class="field-options col-md-12">
+              <table class="table table-condensed">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th uib-tooltip="Show/hide this field in the graph" tooltip-placement="left" tooltip-append-to-body="true">Visible</th>
+                    <th uib-tooltip="Highlight this field when it reaches the indicated threshold" tooltip-placement="left" tooltip-append-to-body="true">Highlight</th>
+                    <th uib-tooltip="Threshold for highlighted data" tooltip-placement="left" tooltip-append-to-body="true">Threshold</th>
+                    <th uib-tooltip="Normalize this field with the selected data field" tooltip-placement="left" tooltip-append-to-body="true">Normalize</th>
+                    <th uib-tooltip="Data field to which other fields can be normalized" tooltip-placement="left" tooltip-append-to-body="true">Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr field-options ng-repeat="field in view.fieldState track by field.name"></tr>
+                </tbody>
+              </table>
             </div>
-            <div class="row">
-              <div class="field-data" ng-class="{'col-md-10' : view.optionsVisible, 'col-md-12' : !view.optionsVisible}">
-                <table class="table table-condensed">
-                  <thead>
-                    <tr>
-                      <th>Visible</th>
-                      <th>Value</th>
-                      <th>Name</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr ng-repeat="field in view.fieldState track by field.name">
-                      <td><input type="checkbox" ng-model="field.visible" ng-click="toggleVisibility(field)"></td>
-                      <td style="color:{{field.color}};">{{field.value}}</td>
-                      <td style="color:{{field.color}};"><div class="span-wrapper" uib-popover="{{field.name}}" popover-trigger="mouseenter" popover-animation="false"><span>{{field.name}}</span></div></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="field-options col-md-2" ng-show="view.optionsVisible">
-                <table class="table table-condensed" ng-show="view.optionsVisible">
-                  <thead>
-                    <tr>
-                      <th uib-tooltip="Normalize this field with the selected data field" tooltip-placement="left" tooltip-append-to-body="true">Normalize</th>
-                      <th uib-tooltip="Data field to which other fields can be normalized" tooltip-placement="left" tooltip-append-to-body="true">Data</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr normalize-fields ng-repeat="field in view.fieldState track by field.name"></tr>
-                  </tbody>
-                </table>
-              </div>
+          </div>
+          <div class="windowing row" ng-show="view.windowing.show">
+            <div class="col-md-9">
+              <span class="warning">File is over {{view.windowing.threshold|bytes}}. Windowing is enabled.</span>
             </div>
-            <div class="windowing row" ng-show="view.windowing.show">
-              <div class="col-md-9">
-                <span class="warning">File is over {{view.windowing.threshold|bytes}}. Windowing is enabled.</span>
-              </div>
-              <div class="col-md-3" ng-hide="view.windowing.paused">
-                <button class="btn btn-primary pull-right" ng-disabled="view.windowing.aborted" ng-click="pauseParse()">Pause</button>
-              </div>
-              <div class="col-md-3" ng-show="view.windowing.paused">
-                <button class="btn btn-primary pull-right" ng-disabled="view.windowing.aborted" ng-click="resumeParse()">Resume</button>
-              </div>
+            <div class="col-md-3" ng-hide="view.windowing.paused">
+              <button class="btn btn-primary pull-right" ng-disabled="view.windowing.aborted" ng-click="pauseParse()">Pause</button>
+            </div>
+            <div class="col-md-3" ng-show="view.windowing.paused">
+              <button class="btn btn-primary pull-right" ng-disabled="view.windowing.aborted" ng-click="resumeParse()">Resume</button>
             </div>
           </div>
         </div>
