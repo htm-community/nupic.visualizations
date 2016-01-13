@@ -9,12 +9,10 @@ angular.module('app').constant('appConfig', {
   EXCLUDE_FIELDS : [],
   // HEADER_SKIPPED_ROWS:
   // number of rows (between 2nd .. Nth, included) skipped.
-  // For OPF this must be >= 2 (as 2nd row is 'float,float,float', 3rd: ',,' metadata)
-  // You can increase this (to about 2000) to skip untrained HTM predictions at the beginning
+  // For OPF this must be >= 3 (as 2nd row is 'float,float,float', 3rd: ',,' metadata)
+  // Tip: You can increase this (to about 2000) to skip untrained HTM predictions at the beginning
   // (eg. data where anomalyScore = 0.5 at the start).
-  // Warning: default 2 is used, so for non-OPF data you lose the first 2 data points
-  // (we find that acceptable).
-  HEADER_SKIPPED_ROWS : 2,
+  HEADER_SKIPPED_ROWS : 1,
   // ZOOM:
   // toggle 2 methods of zooming in the graph: "RangeSelector", "HighlightSelector" (=mouse)
   ZOOM : "HighlightSelector",
@@ -23,17 +21,16 @@ angular.module('app').constant('appConfig', {
   // (has to be determined at the last row), but their first few values are "None".
   // We replace the with this value, defaults to 0.
   NONE_VALUE_REPLACEMENT : 0,
-  // BUFFER:
-  // buffer size used for DyGraph streaming, default 10000
-  BUFFER_SIZE : 10000,
-  // SLIDING_WINDOW:
-  // number of rows in CSV/data points in graph
-  // True = each batch existing values are dropped, new BUFFER_SIZE is painted. Graph will "move to the right".
-  // False = data never dropped, just append. Graph will "shrink". (default)
-  SLIDING_WINDOW : false,
+  // WINDOW_SIZE:
+  // controls windowing functionality,
+  // buffer size (in rows/items) used for DyGraph streaming, default 10000
+  // each batch existing values are dropped, new WINDOW_SIZE is painted. Graph will "move to the right".
+  // -1 : data never dropped, just append. Graph will "shrink".
+  WINDOW_SIZE : 10000,
   // MAX_FILE_SIZE:
-  // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur.  (default 5MB)
-  MAX_FILE_SIZE : 5*1024*1024,
+  // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur. (default 60MB)
+  // -1 to disable the functionality (can cause performance problems on large files/online monitoring)
+  MAX_FILE_SIZE : 60*1024*1024,
   // LOCAL_CHUNK_SIZE:
   // in Bytes
   // size in bytes of each chunk for the data stream, when reading local files

@@ -13,9 +13,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loading: false,
     windowing : {
       threshold : appConfig.MAX_FILE_SIZE,
+      size : -1, // changed to WINDOW_SIZE on 'windowing' / large files. //TODO add UI for this?
       show : false,
       paused : false,
       aborted : false,
+      update_interval : 1, //FIXME Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
     }, 
     monitor : { // online monitoring
       clock : null, // the function in setIteration
@@ -38,7 +40,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     timers = {},
     useIterationsForTimestamp = false,
     iteration = 0,
-    slidingWindow = appConfig.SLIDING_WINDOW,
+    resetFieldIdx = -1,
     streamParser = null,
     firstDataLoaded = false;
 
@@ -57,7 +59,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     $scope.view.windowing.show = false;
     $scope.view.windowing.paused = false;
     $scope.view.windowing.aborted = false;
-    slidingWindow = false;
     $scope.$broadcast("fileUploadChange");
     $scope.view.loading = true;
     $scope.view.file.size = getFileSize($scope.view.filePath);
@@ -75,9 +76,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     // update file size for local files
     $scope.view.file.size = getFileSize($scope.view.file.file);
     console.log("File size "+$scope.view.file.size);
-    if ($scope.view.file.size > appConfig.MAX_FILE_SIZE) {
-      slidingWindow = true;
+    if ($scope.view.file.size > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
       $scope.view.windowing.show = true;
+      $scope.view.windowing.size = appConfig.WINDOW_SIZE;
+      handleError("File too large, automatic sliding window enabled.", "warning");
     }
     $scope.view.loading = true;
     downloadFile($scope.view.file.file, "streamLocal");
@@ -103,7 +105,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // do not start parallel timers, clear existing (and optionally set new)
   var setMonitoringTimer = function(interval) {
     if ($scope.view.monitor.clock !== null || interval <= 0) { //disable the old one
-      clearInterval($scope.view.monitor.clock); //invalidate
+      clearInterval($scope.view.monitor.clock); //invalidate //FIXME clear/setInterval should use AngularJS impl.
       $scope.view.monitor.clock = null;
       $scope.view.monitor.interval = 0;
     }
@@ -213,13 +215,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     console.log("SLOW");
     var tmpTime = -1;
     for (var rowId = 0; rowId < data.length; rowId++) {
-      var arr = [];
+      var row = [];
       for (var colId = 0; colId < loadedFields.length; colId++) {
         var fieldName = loadedFields[colId];
         var fieldValue = data[rowId][fieldName]; // read field's value
         if (fieldName === appConfig.TIMESTAMP) { // dealing with timestamp. See generateFieldMap
+          iteration++;
           if (useIterationsForTimestamp) {
-            fieldValue = iteration++;
+            fieldValue = iteration;
           } else if (typeof(fieldValue) === "number") { // use numeric timestamps/x-data
             //fieldValue; // keep as is
           } else if (typeof(fieldValue) === "string" && parseDate(fieldValue) !== null) { // use date string timestamps
@@ -229,8 +232,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
             fieldValue = iteration;
           }
           // check time monotonicity
-          if (fieldValue <= tmpTime) {
-            handleError("Your time is not monotonic at row "+rowId+"! Graphs are incorrect.", "danger", false);
+          if (fieldValue <= tmpTime && data[rowId][resetFieldIdx] !== 1) {
+            handleError("Your time is not monotonic at row "+iteration+"! Graphs are incorrect.", "danger", false);
+            console.log("Incorrect timestamp!");
+            break; //commented out = just inform, break = skip row
           }
           tmpTime = fieldValue;
         } else { // process other (non-date) data columns
@@ -239,21 +244,25 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
             fieldValue = appConfig.NONE_VALUE_REPLACEMENT;
           }
         }
-        arr.push(fieldValue);
+        row.push(fieldValue);
       }
-      if (slidingWindow && loadedCSV.length > appConfig.BUFFER_SIZE) {
+      if (row.length !== loadedFields.length) {
+        console.log("Incomplete row loaded "+row+"; skipping.");
+        continue;
+      }
+      loadedCSV.push(row);
+      backupCSV.push(angular.extend([], row));
+
+      if ($scope.view.windowing.size !== -1 && loadedCSV.length > $scope.view.windowing.size) { // sliding window trim
         loadedCSV.shift();
         backupCSV.shift();
       }
-      loadedCSV.push(arr);
-      backupCSV.push(angular.extend([], arr));
     }
     if ($scope.view.graph === null) {
       renderGraph();
-    } else if (loadedCSV.length > 0) {
-      $scope.view.graph.updateOptions({
-        'file': loadedCSV
-      });
+    } else if ((iteration % $scope.view.windowing.update_interval) === 0){
+      //console.log("render "+$scope.view.windowing.update_interval+ " iter="+iteration+" CSV sz="+loadedCSV.length );
+      $scope.view.graph.updateOptions({'file': loadedCSV });
     }
     if (!firstDataLoaded) {
       $scope.$apply();
@@ -316,11 +325,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       // used for 'stream*' mode
       chunk: function(chunk, parser) {
         iter++;
-        if (!firstChunkComplete) {
-          streamParser = parser;
-          loadedFields = generateFieldMap(chunk.data, appConfig.EXCLUDE_FIELDS);
-          firstChunkComplete = true;
-        }
+        streamParser = parser;
+        firstChunkComplete = true;
 
         // as files grow very large in continuous monitoring
         // for speed reasons (on large files) in the online monitor mode, 
@@ -329,8 +335,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         if(iter <= $scope.view.monitor.lastChunkIter && iter > 1) {
           console.log("Skipping: iter "+iter+" < = "+$scope.view.monitor.lastChunkIter);
           return;
-        } else if (iter*appConfig.LOCAL_CHUNK_SIZE + 10*appConfig.LOCAL_CHUNK_SIZE < $scope.view.file.size) { //FIXME how ensure the safety buffer (10*XX) from CHUNK_SIZE (B) responds to BUFFER_SIZE (rows)
-        //
+        } else if (iter*appConfig.LOCAL_CHUNK_SIZE + 10*appConfig.LOCAL_CHUNK_SIZE < $scope.view.file.size) { //FIXME how ensure the safety buffer (10*XX) 
+        // ...from CHUNK_SIZE (B) responds to BUFFER_SIZE (rows)
           console.log("Skipping 2: iter "+iter+", bytes read "+iter*appConfig.LOCAL_CHUNK_SIZE+" < "+$scope.view.file.size);
           return;
         } else {
@@ -338,6 +344,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           loadData(chunk.data); // parsing and rendering is slow
         }
       },
+      //fastMode: true, // automatically enabled if no " appear
       beforeFirstChunk: function(chunk) {
         if (mode === "streamRemote") {
           $scope.view.loadedFileName = getRemoteFileName(url);
@@ -345,9 +352,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           $scope.view.loadedFileName = url.name;
         }
         var rows = chunk.split(/\r\n|\r|\n/);
+        loadedFields = generateFieldMap(rows, appConfig.EXCLUDE_FIELDS);
         rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
         $scope.view.loading = false;
-        return rows.join('\n');
+        rows = rows.join('\n');
+        return rows;
       },
       // end of stream*
       error: function(error) {
@@ -402,7 +411,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     var dashDate = dateTime[0].split("-");
     if ((slashDate.length === 1 && dashDate.length === 1) || (slashDate.length > 1 && dashDate.length > 1)) {
       // if there were no instances of delimiters, or we have both delimiters when we should only have one
-      handleError("Could not parse the timestamp", "warning", true);
+      handleError("Could not parse the timestamp: "+strDateTime, "warning", true);
       return null;
     }
     // if it is a dash date, it is probably in this format: yyyy:mm:dd
@@ -516,22 +525,46 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // row of the data.
   // return: array with names of numeric columns
   // If TIMESTAMP is not present, use iterations instead and set global useIterationsForTimestamp=true
+  // also determine if dealing with OPF file and use its special format (skip 3 header rows, ...)
   var generateFieldMap = function(rows, excludes) {
-    // take end-1th row to avoid incompletely loaded data due to chunk size
-    var row = rows[rows.length-2];
-    if (!row.hasOwnProperty(appConfig.TIMESTAMP)) {
+    var header = rows[0].split(',');
+    // OPF
+    var meta = Papa.parse(rows[2], {dynamicTyping: true, skipEmptyLines: true, comments: '#'}).data[0]; // to get correct data-types
+    var isOPF = true; //determine OPF by having only meta chars at 3rd row (not numeric, unlike normal data)
+    for(var i=0; i< meta.length; i++) {
+      if(typeof(meta[i]) === "number") {
+        isOPF = false;
+      } else if (meta[i] === 'R' || meta[i] === 'r') {
+        resetFieldIdx = i;
+      }
+    }
+    if (isOPF) {
+      console.log("Detected OPF/NuPIC file. ");
+      appConfig.HEADER_SKIPPED_ROWS = 3; //default for OPF
+    }
+
+    if (header.indexOf(appConfig.TIMESTAMP) === -1) {
       handleError("No timestamp field was found, using iterations instead", "info");
       useIterationsForTimestamp = true; //global flag
+    } else if (isOPF && resetFieldIdx !== -1) { //TODO fix later support for OPF resets?
+      handleError("OPF file with resets not supported. Ignoring timestamp and using iterations instead.", "info");
+      useIterationsForTimestamp = true; //global flag
+      //FIXME add new field time with orig time values
     }
     // add all numeric fields not in excludes
+    var row = rows[rows.length-2]; // take end-1th row to avoid incompletely loaded data due to chunk size
+    row = Papa.parse(row, {dynamicTyping: true, skipEmptyLines: true, comments: '#'}); // to get correct data-types
     var headerFields = [];
-    angular.forEach(row, function(value, key) {
-      if ((typeof(value) === "number") && excludes.indexOf(key) === -1 && key !== appConfig.TIMESTAMP) {
+    for(var j=0; j<header.length; j++) {
+      var value = row.data[0][j]; // Papa results structure
+      var key = header[j];
+      if ((typeof(value) === "number") && excludes.indexOf(key) === -1) {
         headerFields.push(key);
       }
-    });
-    // timestamp assumed to be at the beginning of the array
-    headerFields.unshift(appConfig.TIMESTAMP); //append timestamp as 1st field
+    }
+    if (headerFields.indexOf(appConfig.TIMESTAMP) === -1) { //missing
+      headerFields.unshift(appConfig.TIMESTAMP); //append timestamp as 1st field
+    }
     return headerFields;
   };
 

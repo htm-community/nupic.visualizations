@@ -16,7 +16,6 @@ Work with NuPIC results interactively in a [nice web UI](https://nupic-visualiza
  - `yyyy-mm-dd [hh[:mm[:ss[:ms]]]]` (Like ISO 8601, but with a space separator for time instead of "T")
  - `mm/dd/yyyy [hh[:mm[:ss[:ms]]]]`
 
-* Note that at this time, the app strips out the first two rows of data. This is because the output of the OPF has three header rows. We are working on a way to automatically detect if the second and third rows are data or meta-data, so this does not happen on non-OPF CSV files.
 * Any modern browser with JavaScript
 * Your favorite web server for running locally
 
