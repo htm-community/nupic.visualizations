@@ -661,7 +661,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         color = field.color.replace("rgb", "rgba").replace(")", "," + transparency + ")");
         var lastHigh = -1;
         for (var x = 0; x < selected.length; x++) {
-          if(selected[x] >= lastHigh) {
+          if(selected[x] - modDt >= lastHigh) {
             highlight_period(selected[x] - modDt, selected[x] + modDt, color);
             lastHigh = selected[x] + modDt;
           }
