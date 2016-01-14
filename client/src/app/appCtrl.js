@@ -653,7 +653,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       var selected, modDt, color, field;
       field = $scope.view.fieldState[i];
       if (field.highlighted === true && field.highlightThreshold !== null) {
-        selected = find_where(loadedCSV, field.name, field.highlightThreshold);
+        selected = find_where(backupCSV, field.name, field.highlightThreshold);
         // compute optimal/visible high. radius as 1% of screen area
         modDt = 0.01 * loadedCSV.length; 
         // plot all of them
