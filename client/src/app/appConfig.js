@@ -36,5 +36,8 @@ angular.module('app').constant('appConfig', {
   LOCAL_CHUNK_SIZE : 65536,
   // REMOTE_CHUNK_SIZE:
   // size in bytes of each chunk for the data stream, when reading files over a network. Not currently used.
-  REMOTE_CHUNK_SIZE : 65536
+  REMOTE_CHUNK_SIZE : 65536,
+  // HIGHLIGHT_RADIUS:
+  // radius of threshold highlight from point in time that reaches the threshold.
+  HIGHLIGHT_RADIUS : 1
 });

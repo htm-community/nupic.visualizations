@@ -1,4 +1,4 @@
-describe('directive: fileUploadChange', function() {
+describe('directive: fieldOptions', function() {
   var element,
     appConfig,
     $rootScope,
@@ -9,82 +9,68 @@ describe('directive: fileUploadChange', function() {
 
   var viewMock = {
     fieldState: [{
-      "name": "reset",
+      "name": "field1",
       "id": 0,
       "visible": true,
       "normalized": false,
       "value": null,
-      "color": "rgb(128,64,0)"
+      "color": "rgb(0,0,0)",
+      "highlighted": false,
+      "highlightThreshold": null
     }, {
-      "name": "consumption",
+      "name": "field2",
       "id": 1,
       "visible": true,
       "normalized": false,
       "value": null,
-      "color": "rgb(0,64,128)"
-    }, {
-      "name": "multiStepPredictions.actual",
+      "color": "rgb(0,0,0)",
+      "highlighted": false,
+      "highlightThreshold": null
+    },{
+      "name": "field3",
       "id": 2,
       "visible": true,
       "normalized": false,
       "value": null,
-      "color": "rgb(128,128,0)"
-    }, {
-      "name": "multiStepBestPredictions.actual",
+      "color": "rgb(0,0,0)",
+      "highlighted": false,
+      "highlightThreshold": null
+    },{
+      "name": "field4",
       "id": 3,
       "visible": true,
       "normalized": false,
       "value": null,
-      "color": "rgb(0,0,128)"
-    }, {
-      "name": "multiStepBestPredictions.1",
+      "color": "rgb(0,0,0)",
+      "highlighted": false,
+      "highlightThreshold": null
+    },{
+      "name": "field5",
       "id": 4,
       "visible": true,
       "normalized": false,
       "value": null,
-      "color": "rgb(64,128,0)"
-    }, {
-      "name": "multiStepBestPredictions.5",
+      "color": "rgb(0,0,0)",
+      "highlighted": false,
+      "highlightThreshold": null
+    },{
+      "name": "field6",
       "id": 5,
       "visible": true,
       "normalized": false,
       "value": null,
-      "color": "rgb(64,0,128)"
-    }, {
-      "name": "anomalyScore",
+      "color": "rgb(0,0,0)",
+      "highlighted": false,
+      "highlightThreshold": null
+    },{
+      "name": "field7",
       "id": 6,
       "visible": true,
       "normalized": false,
       "value": null,
-      "color": "rgb(0,128,0)"
-    }, {
-      "name": "multiStepBestPredictions:multiStep:errorMetric='aae':steps=1:window=1000:field=consumption",
-      "id": 7,
-      "visible": true,
-      "normalized": false,
-      "value": null,
-      "color": "rgb(128,0,128)"
-    }, {
-      "name": "prediction:trivial:errorMetric='aae':steps=5:window=1000:field=consumption",
-      "id": 8,
-      "visible": true,
-      "normalized": false,
-      "value": null,
-      "color": "rgb(0,128,64)"
-    }, {
-      "name": "multiStepBestPredictions:multiStep:errorMetric='aae':steps=5:window=1000:field=consumption",
-      "id": 9,
-      "visible": true,
-      "normalized": false,
-      "value": null,
-      "color": "rgb(128,0,64)"
-    }, {
-      "name": "prediction:trivial:errorMetric='aae':steps=1:window=1000:field=consumption",
-      "id": 10,
-      "visible": true,
-      "normalized": false,
-      "value": null,
-      "color": "rgb(0,128,128)"
+      "color": "rgb(0,0,0)",
+      "highlighted": false,
+      "highlightThreshold": null
     }],
     dataField : 2
   }
@@ -109,7 +95,7 @@ describe('directive: fileUploadChange', function() {
     spyOn($scope, 'normalizeField');
     spyOn($scope, 'denormalizeField');
     spyOn($scope, 'renormalize');
-    element = '<tr normalize-fields ng-repeat="field in view.fieldState track by field.name"></tr>';
+    element = '<tr field-options ng-repeat="field in view.fieldState track by field.name"></tr>';
     element = $compile(element)($scope);
 
   }));

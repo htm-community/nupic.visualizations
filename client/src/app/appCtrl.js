@@ -11,21 +11,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loadedFileName: "",
     errors: [],
     loading: false,
-    windowing : {
-      threshold : appConfig.MAX_FILE_SIZE,
-      size : -1, // changed to WINDOW_SIZE on 'windowing' / large files. //TODO add UI for this?
-      show : false,
-      paused : false,
-      aborted : false,
-      update_interval : 1, //FIXME Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
-    },
-    highlighting : { // section for highlighting (anomalie) over a threshold
-      fieldName : "sine", //TODO add UI control
-      threshold : 0.8, // UI control
-      color : "rgba(255,50,0,0.6)",
-      radius : 10, //in "steps" of xdata values
-      finished : true, // sync variable, so we wait till started run of highlightAnomaly finishes
-    },
+    windowing: {
+      threshold: appConfig.MAX_FILE_SIZE,
+      size: -1, // changed to WINDOW_SIZE on 'windowing' / large files. //TODO add UI for this?
+      show: false,
+      paused: false,
+      aborted: false,
+      update_interval: 1, //FIXME Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
+    }
   };
 
   var loadedCSV = [],
@@ -57,10 +50,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     $scope.view.loading = true;
     // we do a quick test here to see if the server supports the Range header.
     // If so, we try to stream. If not, we try to download.
-    $http.head($scope.view.filePath,{'headers' : {'Range' : 'bytes=0-32'}}).then(function(response){
-      if(response.status === 206) {
+    $http.head($scope.view.filePath, {
+      'headers': {
+        'Range': 'bytes=0-32'
+      }
+    }).then(function(response) {
+      if (response.status === 206) {
         // now we check to see how big the file is
-        $http.head($scope.view.filePath).then(function(response){
+        $http.head($scope.view.filePath).then(function(response) {
           var contentLength = response.headers('Content-Length');
           if (contentLength > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
             $scope.view.windowing.show = true;
@@ -145,14 +142,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           }
           // check time monotonicity
           if (fieldValue <= tmpTime && data[rowId][resetFieldIdx] !== 1) {
-            handleError("Your time is not monotonic at row "+iteration+"! Graphs are incorrect.", "danger", false);
+            handleError("Your time is not monotonic at row " + iteration + "! Graphs are incorrect.", "danger", false);
             console.log("Incorrect timestamp!");
             break; //commented out = just inform, break = skip row
           }
           tmpTime = fieldValue;
-        } else if (fieldName === 'threshold*' ) { // artificial field for anomaly detection threshold
-          fieldValue = $scope.view.highlighting.threshold; 
-        } else { // process other (non-date) data columns
+        }
+        else { // process other (non-date) data columns
           // FIXME: this is an OPF "bug", should be discussed upstream
           if (fieldValue === "None") {
             fieldValue = appConfig.NONE_VALUE_REPLACEMENT;
@@ -161,7 +157,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         row.push(fieldValue);
       }
       if (row.length !== loadedFields.length) {
-        console.log("Incomplete row loaded "+row+"; skipping.");
+        console.log("Incomplete row loaded " + row + "; skipping.");
         continue;
       }
       loadedCSV.push(row);
@@ -174,9 +170,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
     if ($scope.view.graph === null) {
       renderGraph();
-    } else if ((iteration % $scope.view.windowing.update_interval) === 0){
+    } else if ((iteration % $scope.view.windowing.update_interval) === 0) {
       //console.log("render "+$scope.view.windowing.update_interval+ " iter="+iteration+" CSV sz="+loadedCSV.length );
-      $scope.view.graph.updateOptions({'file': loadedCSV });
+      $scope.view.graph.updateOptions({
+        'file': loadedCSV
+      });
     }
     if (!firstDataLoaded) {
       $scope.$apply();
@@ -337,7 +335,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     var dashDate = dateTime[0].split("-");
     if ((slashDate.length === 1 && dashDate.length === 1) || (slashDate.length > 1 && dashDate.length > 1)) {
       // if there were no instances of delimiters, or we have both delimiters when we should only have one
-      handleError("Could not parse the timestamp: "+strDateTime, "warning", true);
+      handleError("Could not parse the timestamp: " + strDateTime, "warning", true);
       return null;
     }
     // if it is a dash date, it is probably in this format: yyyy:mm:dd
@@ -447,7 +445,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   };
 
   // say which fields will be plotted (all numeric - excluded)
-  // based on parsing the last-1 (to omit Nones at the start; and to avoid incompletely chunked row) 
+  // based on parsing the last-1 (to omit Nones at the start; and to avoid incompletely chunked row)
   // row of the data.
   // return: array with names of numeric columns
   // If TIMESTAMP is not present, use iterations instead and set global useIterationsForTimestamp=true
@@ -455,10 +453,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   var generateFieldMap = function(rows, excludes) {
     var header = rows[0].split(',');
     // OPF
-    var meta = Papa.parse(rows[2], {dynamicTyping: true, skipEmptyLines: true, comments: '#'}).data[0]; // to get correct data-types
+    var meta = Papa.parse(rows[2], {
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      comments: '#'
+    }).data[0]; // to get correct data-types
     var isOPF = true; //determine OPF by having only meta chars at 3rd row (not numeric, unlike normal data)
-    for(var i=0; i< meta.length; i++) {
-      if(typeof(meta[i]) === "number") {
+    for (var i = 0; i < meta.length; i++) {
+      if (typeof(meta[i]) === "number") {
         isOPF = false;
       } else if (meta[i] === 'R' || meta[i] === 'r') {
         resetFieldIdx = i;
@@ -478,10 +480,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       //FIXME add new field time with orig time values
     }
     // add all numeric fields not in excludes
-    var row = rows[rows.length-2]; // take end-1th row to avoid incompletely loaded data due to chunk size
-    row = Papa.parse(row, {dynamicTyping: true, skipEmptyLines: true, comments: '#'}); // to get correct data-types
+    var row = rows[rows.length - 2]; // take end-1th row to avoid incompletely loaded data due to chunk size
+    row = Papa.parse(row, {
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      comments: '#'
+    }); // to get correct data-types
     var headerFields = [];
-    for(var j=0; j<header.length; j++) {
+    for (var j = 0; j < header.length; j++) {
       var value = row.data[0][j]; // Papa results structure
       var key = header[j];
       if ((typeof(value) === "number") && excludes.indexOf(key) === -1) {
@@ -490,7 +496,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
 
     // add 'threshold' field for anomaly detection
-    headerFields.push('threshold*');
+    //headerFields.push('threshold*');
 
     if (headerFields.indexOf(appConfig.TIMESTAMP) === -1) { //missing
       headerFields.unshift(appConfig.TIMESTAMP); //append timestamp as 1st field
@@ -513,6 +519,16 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         $scope.view.fieldState[i].value = null;
       }
     }
+  };
+
+  $scope.updateHighlight = function(field) {
+    if (field.highlightThreshold === null) {
+      return;
+    }
+    if (field.highlightThreshold === "") {
+      field.highlightThreshold = null;
+    }
+    $scope.view.graph.updateOptions({});
   };
 
   // the main "graphics" is rendered here
@@ -540,7 +556,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         visible: true,
         normalized: false,
         value: null,
-        color: "rgb(0,0,0)"
+        color: "rgb(0,0,0)",
+        highlighted: false,
+        highlightThreshold: null
       });
       counter++;
     }
@@ -549,7 +567,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       loadedCSV, {
         labels: loadedFields,
         labelsUTC: false, // make timestamp in UTC to have consistent graphs
-        showLabelsOnHighlight: false,
+        showLabelsOnHighlight: true,
         xlabel: "Time",
         ylabel: "Values",
         strokeWidth: 1,
@@ -592,18 +610,11 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   });
 
 
-  // given values in highlighting{} structure, 
   // highlight areas where a select function value crosses a threshold
   // used in dygraph's underlayCallback
   function highlightAnomaly(canvas, area, g) {
-    // sync semaphor, do not start another call till last finished
-    if($scope.view.highlighting.finished === false) {
-      return;
-    }
-    $scope.view.highlighting.finished = false;
+
     var timeIdx = loadedFields.indexOf(appConfig.TIMESTAMP);
-    var time;
-    var value;
 
     // draw rectangle on x0..x1
     function highlight_period(x_start, x_end, color) {
@@ -617,15 +628,15 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     // find x values matching condition on y-value
     // params: data (all fields), watchedFieldName (string), threshold (for condition >thr)
     // return array with indices of anomalies
-    function find_where(data, watchedFieldName, threshold, dt) {
+    function find_where(data, watchedFieldName, threshold) {
       var results = [];
       var fnIdx = loadedFields.indexOf(watchedFieldName);
       if (fnIdx === -1) {
-        handleError("Highlighting cannot work, field "+watchedFieldName+" not found!", "danger", true);
+        handleError("Highlighting cannot work, field " + watchedFieldName + " not found!", "danger", true);
         return [];
       }
-      for( var i=0; i< data.length; i++) {
-        value = data[i][fnIdx];
+      for (var i = 0; i < data.length; i++) {
+        var value = data[i][fnIdx];
         // the condition is here
         if (value >= threshold) {
           var time = data[i][timeIdx];
@@ -638,13 +649,21 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
 
     //highlight_period(2, 5, yellow); //test
     // find relevant points
-    var selected = find_where(loadedCSV, $scope.view.highlighting.fieldName, $scope.view.highlighting.threshold);
-    var modDt = $scope.view.highlighting.radius*(loadedCSV[1][timeIdx]-loadedCSV[0][timeIdx]); // update dt to grain resol of timestamps
-    // plot all of them
-    for (var i=0; i < selected.length; i++) {
-      highlight_period(selected[i]-modDt, selected[i]+modDt, $scope.view.highlighting.color);
+    for (var i = 0; i < $scope.view.fieldState.length; i++) {
+      var selected, modDt, color, field;
+      field = $scope.view.fieldState[i];
+      if (field.highlighted === true && field.highlightThreshold !== null) {
+        selected = find_where(loadedCSV, field.name, field.highlightThreshold);
+        modDt = appConfig.HIGHLIGHT_RADIUS * (loadedCSV[1][timeIdx] - loadedCSV[0][timeIdx]); // update dt to grain resol of timestamps
+        // plot all of them
+        var transparency = 0.25 / appConfig.HIGHLIGHT_RADIUS;
+        color = field.color.replace("rgb", "rgba").replace(")", "," + transparency + ")");
+        for (var x = 0; x < selected.length; x++) {
+          highlight_period(selected[x] - modDt, selected[x] + modDt, color);
+        }
+      }
     }
-    $scope.view.highlighting.finished = true;
+
   } // end highlightAnomaly callback
 
 
