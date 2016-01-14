@@ -5,8 +5,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   $scope.view = {
     fieldState: [],
     graph: null,
-    //canvas: null,
-    //area: null,
     dataField: null,
     optionsVisible: true,
     filePath: "",
@@ -20,14 +18,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       paused: false,
       aborted: false,
       update_interval: 1, //FIXME Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
-    },
-    highlighting: { // section for highlighting (anomalie) over a threshold
-      //field : null,
-      //threshold : 0.8, // UI control
-      //color : "rgba(255,50,0,0.6)",
-      //radius : 1, //in "steps" of xdata values
-      finished: true // sync variable, so we wait till started run of highlightAnomaly finishes
-    },
+    }
   };
 
   var loadedCSV = [],
@@ -157,9 +148,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           }
           tmpTime = fieldValue;
         }
-        /*else if (fieldName === 'threshold*' ) { // artificial field for anomaly detection threshold
-                 fieldValue = $scope.view.highlighting.threshold;
-               }*/
         else { // process other (non-date) data columns
           // FIXME: this is an OPF "bug", should be discussed upstream
           if (fieldValue === "None") {
