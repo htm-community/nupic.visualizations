@@ -571,6 +571,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         xlabel: "Time",
         ylabel: "Values",
         strokeWidth: 1,
+        //!strokeBorderWidth: 0.1,
+        sigFigs: 5,
         // WARNING: this causes huge performance speed penalty!!
         // highlightSeriesOpts: { // series hovered get thicker
         //   strokeWidth: 2,
