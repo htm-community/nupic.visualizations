@@ -80,7 +80,7 @@ The goals of this project are:
  * quickly export shown subsection of graph as a PNG image or CSV data (planned)
  * manually annotate selected section with text data (planned)
 * specific functionality for anomaly detection
- * auto-highlight series over/under a threshold (or other condition) (planned)
+ * auto-highlight series over/under a threshold (or other condition)
  * rescaling some series to be easily visible with the reference series
  * with annotated anomalies, compute precision, recall, F-measure (planned)
 * works with quite large data (million poitns) 

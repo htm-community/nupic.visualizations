@@ -43,5 +43,9 @@ angular.module('app').constant('appConfig', {
   // time interval (in ms) after which the source file is re-read to find possible updates. 
   // A value <= 0 means polling is disabled - nothing else happens after the end of the file is reached. 
   // Default: 0
-  POLLING_INTERVAL : 5000
+  POLLING_INTERVAL : 5000,
+  // HIGHLIGHT_RADIUS:
+  // radius of threshold highlight from point in time that reaches the threshold.
+  // modifies (together with color/opacity) how visible the highlight is.
+  HIGHLIGHT_RADIUS : 10,
 });

@@ -50,17 +50,21 @@
   min-height:26px;
 }
 
-.options-toggle {
-  .glyphicon {
-    color:#999;
-  }
-  &:hover .glyphicon {
-    color:#333;
-  }
-}
-
 .graphs {
   padding-top:15px;
+  .show-options {
+    position:absolute;
+    right:15px;
+    z-index:1;
+    .options-toggle {
+      .glyphicon {
+        color:#999;
+      }
+      &:hover .glyphicon {
+        color:#333;
+      }
+    }
+  }
   .graph {
     height: 500px;
     width:100%;
@@ -71,13 +75,17 @@
   .fields {
     position: relative;
   }
-  .field-data {
+  .field-options {
     padding-right:0;
     .popover {
       max-width:none;
     }
     tr {
+      th {
+        text-align:center;
+      }
       td {
+        text-align:center;
         div.span-wrapper {
           position:relative;
           height:20px;
@@ -89,27 +97,29 @@
           overflow: hidden;
           text-overflow: ellipsis;
         }
+        input.input-sm {
+          height:20px;
+        }
         &:nth-child(1) {
-          width:5%;
+          text-align:left;
+          width:50%;
         }
         &:nth-child(2) {
-          width:25%;
+          width:10%;
         }
         &:nth-child(3) {
-          width:70% !important;
+          width:10%;
+        }
+        &:nth-child(4) {
+          width:10%;
+        }
+        &:nth-child(5) {
+          width:10%;
+        }
+        &:nth-child(6) {
+          width:10%;
         }
       }
-      td, th {
-        &:first-child {
-          text-align:center;
-        }
-      }
-    }
-  }
-  .field-options {
-    padding-left:0;
-    tr, td {
-      text-align:center;
     }
   }
 }
