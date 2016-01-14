@@ -556,7 +556,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         visible: true,
         normalized: false,
         value: null,
-        //color: "rgb(0,0,0)",//auto assign
+        color: "rgb(0,0,0)",
         highlighted: false,
         highlightThreshold: null
       });
@@ -571,14 +571,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         xlabel: "Time",
         ylabel: "Values",
         strokeWidth: 1,
-        //!strokeBorderWidth: 0.1, // WARNING: this causes huge performance speed penalty!!
+        //!strokeBorderWidth: 0.1,
         sigFigs: 5,
-        highlightSeriesOpts: { // series hovered get thicker
-          strokeWidth: 1.1,
+        // WARNING: this causes huge performance speed penalty!!
+        // highlightSeriesOpts: { // series hovered get thicker
+        //   strokeWidth: 2,
         //   strokeBorderWidth: 1,
-          highlightCircleSize: 3,
-          strokePattern: [2, 2, 2]
-        },
+        //   highlightCircleSize: 3
+        // },
         // select and copy functionality
         // FIXME: avoid the hardcoded timestamp format
         pointClickCallback: function(e, point) {
