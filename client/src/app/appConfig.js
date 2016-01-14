@@ -32,11 +32,18 @@ angular.module('app').constant('appConfig', {
   // -1 to disable the functionality (can cause performance problems on large files/online monitoring)
   MAX_FILE_SIZE : 60*1024*1024,
   // LOCAL_CHUNK_SIZE:
+  // in Bytes
   // size in bytes of each chunk for the data stream, when reading local files
-  LOCAL_CHUNK_SIZE : 65536,
+  LOCAL_CHUNK_SIZE : 2*1024*1024,
   // REMOTE_CHUNK_SIZE:
-  // size in bytes of each chunk for the data stream, when reading files over a network. Not currently used.
+  // in Bytes
+  // size in bytes of each chunk for the data stream, when reading files over a network.
   REMOTE_CHUNK_SIZE : 65536,
+  // POLLING_INTERVAL:
+  // time interval (in ms) after which the source file is re-read to find possible updates. 
+  // A value <= 0 means polling is disabled - nothing else happens after the end of the file is reached. 
+  // Default: 0
+  POLLING_INTERVAL : 5000,
   // HIGHLIGHT_RADIUS:
   // radius of threshold highlight from point in time that reaches the threshold.
   // modifies (together with color/opacity) how visible the highlight is.

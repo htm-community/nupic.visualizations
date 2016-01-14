@@ -1,6 +1,6 @@
 // Web UI:
 
-angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'appConfig', function($scope, $http, $timeout, appConfig) {
+angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'appConfig', '$interval', function($scope, $http, $timeout, appConfig, $interval) {
 
   $scope.view = {
     fieldState: [],
@@ -11,14 +11,28 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loadedFileName: "",
     errors: [],
     loading: false,
-    windowing: {
-      threshold: appConfig.MAX_FILE_SIZE,
-      size: -1, // changed to WINDOW_SIZE on 'windowing' / large files. //TODO add UI for this?
-      show: false,
-      paused: false,
-      aborted: false,
-      update_interval: 1, //FIXME Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
-    }
+    windowing : {
+      threshold : appConfig.MAX_FILE_SIZE,
+      size : -1, // changed to WINDOW_SIZE on 'windowing' / large files. //TODO add UI for this?
+      show : false,
+      paused : false,
+      aborted : false,
+      update_interval : 1, //FIXME Math.round(appConfig.WINDOW_SIZE / 10.0), //every N rows render (10% change)
+    }, 
+    monitor : { // online monitoring
+      clock : undefined, // the function in setIteration
+      interval : 0, // dT
+      lastChunkIter : 0, // helper, for speed we render only chunks with iter>last
+    },
+    file : { // info about the input file
+      size : 0, //getFileSize sets
+      file : null,
+      name : null,
+      path : null,
+      loadingInProgress : false, // set true on start of file loading
+      local : true, //canDownload
+      streaming: false, //canDownload sets
+    },
   };
 
   var loadedCSV = [],
@@ -42,44 +56,129 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
   };
 
-  $scope.getRemoteFile = function() {
-    $scope.view.windowing.show = false;
-    $scope.view.windowing.paused = false;
-    $scope.view.windowing.aborted = false;
-    $scope.$broadcast("fileUploadChange");
-    $scope.view.loading = true;
-    // we do a quick test here to see if the server supports the Range header.
-    // If so, we try to stream. If not, we try to download.
-    $http.head($scope.view.filePath, {
-      'headers': {
-        'Range': 'bytes=0-32'
-      }
-    }).then(function(response) {
-      if (response.status === 206) {
-        // now we check to see how big the file is
-        $http.head($scope.view.filePath).then(function(response) {
-          var contentLength = response.headers('Content-Length');
-          if (contentLength > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
-            $scope.view.windowing.show = true;
-            $scope.view.windowing.size = appConfig.WINDOW_SIZE;
-            handleError("File too large, automatic sliding window enabled.", "warning");
-          }
-          streamRemoteFile($scope.view.filePath);
-        });
-      } else {
-        downloadFile($scope.view.filePath);
-      }
-    }, function() {
-      downloadFile($scope.view.filePath);
-    });
+  // main "load" function that supports both URL/local file
+  // takes care of monitoring/streaming-data plots: if appConfig.POLLING_INTERVAL > 0 keep polling the file,sleeping
+  $scope.loadFile = function(event) {
+    // react to the file-selector event
+    var src = $scope.view.file.path;
+    if (event !== null) {
+      $scope.view.file.file = event.target.files[0];
+      $scope.view.file.name = $scope.view.file.file.name;
+      $scope.view.file.path = event.target.files[0].name;
+      $scope.view.filePath = $scope.view.file.path; //TODO remove this
+      src = $scope.view.file.file;
+    }
+    loadFile(src);
+    setMonitoringTimer(appConfig.POLLING_INTERVAL, src); //FIXME create an entry element for numeric value in UI for this, each change should call setMonitoringTimer()
   };
 
+  // set up interval for cuntinuous monotoring/timer
+  // param interval: in ms, <=0 means disabled
+  // do not start parallel timers, clear existing (and optionally set new)
+  var setMonitoringTimer = function(interval, src) {
+    if (angular.isDefined($scope.view.monitor.clock) || interval <= 0) { //disable the old one
+      $interval.cancel($scope.view.monitor.clock); //invalidate 
+      $scope.view.monitor.clock = undefined;
+      $scope.view.monitor.interval = 0;
+    }
+
+    if (interval > 0) {
+      handleError("Monitoring mode started, update interval "+appConfig.POLLING_INTERVAL+"ms. ", "warning",true);
+      $scope.view.monitor.interval = interval;
+      $scope.view.monitor.clock = $interval(function () {loadFile(src); console.log("updating...");}, $scope.view.monitor.interval); //FIXME work with remote too
+    }
+  };
+
+  // helper fn for timer/monitoring in loadFile
+  // param file = File (for local), or string filePath for remote
+  var loadFile = function(file) {
+    if ($scope.view.file.loadingInProgress) {
+      console.log("File was not completely read yet, cancelling another re-read till done!");
+      return;
+    }
+    $scope.view.file.loadingInProgress = true;
+    $scope.view.loading = true;
+    // will set the local file= true/false, promise //FIXME use all() to combine 2 promises
+    $scope.canDownload().then(
+      function () {getFileSize(file).then(function () {doThis();}, function () {console.log("FAIL 2");} );}, 
+      function () {console.log("FAIL");});
+
+    function doThis() { //just wrapper
+      $scope.view.windowing.show = false;
+      $scope.view.windowing.paused = false;
+      $scope.view.windowing.aborted = false;
+      $scope.$broadcast("fileUploadChange");
+      console.log("File size "+$scope.view.file.size);
+      if ($scope.view.file.size > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
+        $scope.view.windowing.show = true;
+        $scope.view.windowing.size = appConfig.WINDOW_SIZE;
+        handleError("File too large, automatic sliding window enabled.", "warning");
+
+        if ($scope.view.file.streaming) {
+          console.log("streamig...");
+          downloadFile(file, "streamRemote");
+        } else if ($scope.view.file.local) {
+          downloadFile(file, "streamLocal");
+        }
+      } else {
+        downloadFile(file, "download"); // fallback, or small file
+      }
+    } //end doThis
+  };
+
+
+  // test if a remote file can be downloaded.
+  // "disables" the download button in UI
+  // A file can be downloaded if: 1. is a URL; 2. server supports "Range" header;
+  // also sets file.local, file.streaming ; as a promise 
   $scope.canDownload = function() {
     var pathParts = $scope.view.filePath.split("://");
     if ((pathParts[0] === "https" || pathParts[0] === "http") && pathParts.length > 1 && pathParts[1].length > 0) {
-      return true;
-    } else {
+      $scope.view.file.local = false;
+      // we do a quick test here to see if the server supports the Range header.
+      // If so, we try to stream. If not, we try to download.
+      $http.head($scope.view.filePath,{'headers' : {'Range' : 'bytes=0-32'}}).then(
+        function(response){ 
+          if(response.status === 206) { 
+            console.log("server supports remote streaming");
+            $scope.view.file.streaming = true;
+            return true; 
+          } else { 
+            handleError("Server does not support remote file streaming. (Missing Range HTTP header).", "danger", true);
+            $scope.view.file.streaming = false;
+            return false; 
+          } 
+        },
+        function() {
+            $scope.view.file.streaming = false;
+            return false;
+       }); 
+    } else { // not a remote URL
+      $scope.view.file.local = true;
+      $scope.view.file.streaming = true; //FIXME should here on local be streaming?
       return false;
+    }
+  };
+
+  // get size of a file
+  // param file - local File object, or URL(string) to a remote file
+  // return number (as a promise!)
+  var getFileSize = function(file) {
+    if (typeof(file)=="object") { // intentionally not ===
+      $scope.view.file.size = file.size;
+      return file.size;
+    } else {
+      $http.head(file).then(
+        function(response){
+          $scope.view.file.size = response.headers('Content-Length');
+          return response.headers('Content-Length');
+        }, 
+        function() {
+         handleError("Failed to get remote file's size", "danger", true);
+         $scope.view.file.size = -1;
+         return -1;
+        }
+      );
     }
   };
 
@@ -105,23 +204,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
   };
 
-  $scope.getLocalFile = function(event) {
-    $scope.view.filePath = event.target.files[0].name;
-    if (event.target.files[0].size > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
-      $scope.view.windowing.show = true;
-      $scope.view.windowing.size = appConfig.WINDOW_SIZE;
-      handleError("File too large, automatic sliding window enabled.", "warning");
-    }
-    $scope.view.loading = true;
-    streamLocalFile(event.target.files[0]);
-  };
-
   var getRemoteFileName = function(url) {
     var pathParts = url.split("/");
     return pathParts[pathParts.length - 1];
   };
 
+ 
   var loadData = function(data) {
+    console.log("SLOW");
     var tmpTime = -1;
     for (var rowId = 0; rowId < data.length; rowId++) {
       var row = [];
@@ -199,8 +289,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     firstDataLoaded = false;
   };
 
-  var downloadFile = function(url) {
+  // function to "download" a file, 
+  // with param. 'mode': "download","streamLocal","streamRemote"
+  var downloadFile = function(url, mode) {
     resetFields();
+    Papa.RemoteChunkSize = appConfig.REMOTE_CHUNK_SIZE;
+    Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
+    var iter = 0;
     Papa.parse(url, {
       download: true,
       skipEmptyLines: true,
@@ -208,7 +303,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       dynamicTyping: true,
       worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
       comments: "#",
+      // used for 'download' mode
       complete: function(results) {
+        console.log("COMPLETED");
+        $scope.view.monitor.lastChunkIter = iter;
+        $scope.view.file.loadingInProgress = false; //completed
+        if (mode !== "download") {
+          return;
+        }
         if (!angular.isDefined(results.data)) {
           handleError("An error occurred when attempting to download file.", "danger");
         } else {
@@ -220,30 +322,35 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         $scope.view.loading = false;
         $scope.$apply();
       },
-      error: function(error) {
-        $scope.view.loading = false;
-        handleError("Could not download file.", "danger");
-      }
-    });
-  };
 
-  var streamRemoteFile = function(url) {
-    resetFields();
-    Papa.RemoteChunkSize = appConfig.REMOTE_CHUNK_SIZE;
-    var firstChunkComplete = false;
-    Papa.parse(url, {
-      download: true,
-      skipEmptyLines: true,
-      header: true,
-      dynamicTyping: true,
-      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
-      comments: "#",
+      // used for 'stream*' mode
       chunk: function(chunk, parser) {
+        iter++;
         streamParser = parser;
-        loadData(chunk.data);
+
+        // as files grow very large in continuous monitoring
+        // for speed reasons (on large files) in the online monitor mode, 
+        // we skip renderning all but the last window
+        // this technique only helps after the file was once read to the end (completed)
+        if(iter <= $scope.view.monitor.lastChunkIter && iter > 1) {
+          console.log("Skipping: iter "+iter+" < = "+$scope.view.monitor.lastChunkIter);
+          return;
+        } else if (iter*appConfig.LOCAL_CHUNK_SIZE + 10*appConfig.LOCAL_CHUNK_SIZE < $scope.view.file.size) { //FIXME how ensure the safety buffer (10*XX) 
+        // ...from CHUNK_SIZE (B) responds to BUFFER_SIZE (rows)
+          console.log("Skipping 2: iter "+iter+", bytes read "+iter*appConfig.LOCAL_CHUNK_SIZE+" < "+$scope.view.file.size);
+          return;
+        } else {
+          console.log("working");
+          loadData(chunk.data); // parsing and rendering is slow
+        }
       },
+      //fastMode: true, // automatically enabled if no " appear
       beforeFirstChunk: function(chunk) {
-        $scope.view.loadedFileName = getRemoteFileName(url);
+        if (mode === "streamRemote") {
+          $scope.view.loadedFileName = getRemoteFileName(url);
+        } else if (mode === "streamLocal") {
+          $scope.view.loadedFileName = url.name;
+        }
         var rows = chunk.split(/\r\n|\r|\n/);
         loadedFields = generateFieldMap(rows, appConfig.EXCLUDE_FIELDS);
         rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
@@ -251,45 +358,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         rows = rows.join('\n');
         return rows;
       },
-      //fastMode: true, // automatically enabled if no " appear
+      // end of stream*
       error: function(error) {
-        handleError("Could not stream file.", "danger");
         $scope.view.loading = false;
+        handleError("Could not download/stream the file.", "danger");
       }
     });
   };
 
-  // read and parse a CSV file
-  var streamLocalFile = function(file) {
-    resetFields();
-    Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
-    var firstChunkComplete = false;
-    Papa.parse(file, {
-      skipEmptyLines: true,
-      header: true,
-      dynamicTyping: true,
-      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
-      comments: "#",
-      chunk: function(chunk, parser) {
-        streamParser = parser;
-        loadData(chunk.data);
-      },
-      beforeFirstChunk: function(chunk) {
-        $scope.view.loadedFileName = file.name;
-        var rows = chunk.split(/\r\n|\r|\n/);
-        loadedFields = generateFieldMap(rows, appConfig.EXCLUDE_FIELDS);
-        rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
-        $scope.view.loading = false;
-        rows = rows.join('\n');
-        return rows;
-      },
-      //fastMode: true, // automatically enabled if no " appear
-      error: function(error) {
-        handleError(error, "danger");
-        $scope.view.loading = false;
-      }
-    });
-  };
 
   // show errors as "notices" in the UI
   var handleError = function(error, type, showOnce) {
