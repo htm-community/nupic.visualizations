@@ -654,13 +654,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       field = $scope.view.fieldState[i];
       if (field.highlighted === true && field.highlightThreshold !== null) {
         selected = find_where(loadedCSV, field.name, field.highlightThreshold);
-        modDt = appConfig.HIGHLIGHT_RADIUS * (loadedCSV[1][timeIdx] - loadedCSV[0][timeIdx]); // update dt to grain resol of timestamps
+        // compute optimal/visible high. radius as 1% of screen area
+        modDt = 0.01 * loadedCSV.length; 
         // plot all of them
-        var transparency = Math.max(0.4, Math.min(0.75 / appConfig.HIGHLIGHT_RADIUS, 0.6)); // 0.4..0.7
+        var transparency = 0.4 // min/max opacity for overlapping highs
         color = field.color.replace("rgb", "rgba").replace(")", "," + transparency + ")");
         var lastHigh = -1;
         for (var x = 0; x < selected.length; x++) {
-          if(selected[x] > lastHigh) {
+          if(selected[x] >= lastHigh) {
             highlight_period(selected[x] - modDt, selected[x] + modDt, color);
             lastHigh = selected[x] + modDt;
           }
