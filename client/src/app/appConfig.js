@@ -39,5 +39,6 @@ angular.module('app').constant('appConfig', {
   REMOTE_CHUNK_SIZE : 65536,
   // HIGHLIGHT_RADIUS:
   // radius of threshold highlight from point in time that reaches the threshold.
-  HIGHLIGHT_RADIUS : 1
+  // modifies (together with color/opacity) how visible the highlight is.
+  HIGHLIGHT_RADIUS : 10,
 });

@@ -656,10 +656,14 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         selected = find_where(loadedCSV, field.name, field.highlightThreshold);
         modDt = appConfig.HIGHLIGHT_RADIUS * (loadedCSV[1][timeIdx] - loadedCSV[0][timeIdx]); // update dt to grain resol of timestamps
         // plot all of them
-        var transparency = 0.25 / appConfig.HIGHLIGHT_RADIUS;
+        var transparency = Math.max(0.4, Math.min(0.75 / appConfig.HIGHLIGHT_RADIUS, 0.6)); // 0.4..0.7
         color = field.color.replace("rgb", "rgba").replace(")", "," + transparency + ")");
+        var lastHigh = -1;
         for (var x = 0; x < selected.length; x++) {
-          highlight_period(selected[x] - modDt, selected[x] + modDt, color);
+          if(selected[x] > lastHigh) {
+            highlight_period(selected[x] - modDt, selected[x] + modDt, color);
+            lastHigh = selected[x] + modDt;
+          }
         }
       }
     }
