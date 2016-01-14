@@ -570,13 +570,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         showLabelsOnHighlight: true,
         xlabel: "Time",
         ylabel: "Values",
-        strokeBorderWidth: 0.1,
+        strokeWidth: 1,
         // WARNING: this causes huge performance speed penalty!!
-         highlightSeriesOpts: { // series hovered get thicker
-           strokeWidth: 2,
-           strokeBorderWidth: 1,
-           highlightCircleSize: 3
-         },
+        // highlightSeriesOpts: { // series hovered get thicker
+        //   strokeWidth: 2,
+        //   strokeBorderWidth: 1,
+        //   highlightCircleSize: 3
+        // },
         // select and copy functionality
         // FIXME: avoid the hardcoded timestamp format
         pointClickCallback: function(e, point) {
