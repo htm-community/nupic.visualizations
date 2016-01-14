@@ -570,13 +570,13 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         showLabelsOnHighlight: true,
         xlabel: "Time",
         ylabel: "Values",
-        strokeWidth: 1,
+        strokeBorderWidth: 0.1,
         // WARNING: this causes huge performance speed penalty!!
-        // highlightSeriesOpts: { // series hovered get thicker
-        //   strokeWidth: 2,
-        //   strokeBorderWidth: 1,
-        //   highlightCircleSize: 3
-        // },
+         highlightSeriesOpts: { // series hovered get thicker
+           strokeWidth: 2,
+           strokeBorderWidth: 1,
+           highlightCircleSize: 3
+         },
         // select and copy functionality
         // FIXME: avoid the hardcoded timestamp format
         pointClickCallback: function(e, point) {
@@ -657,7 +657,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
         // compute optimal/visible high. radius as 1% of screen area
         modDt = 0.01 * loadedCSV.length; 
         // plot all of them
-        var transparency = 0.4 // min/max opacity for overlapping highs
+        var transparency = 0.4; // min/max opacity for overlapping highs
         color = field.color.replace("rgb", "rgba").replace(")", "," + transparency + ")");
         var lastHigh = -1;
         for (var x = 0; x < selected.length; x++) {
