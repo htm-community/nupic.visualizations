@@ -1,0 +1,7 @@
+{
+  "robots": "User-agent: *\nDisallow: ",
+  "listenPort" : 5000,
+  "staticUrl" : "/static",
+  "expressLogFile" : "/var/log/www/express.log",
+  "appPath" : "/app"
+}
