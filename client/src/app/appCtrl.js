@@ -106,6 +106,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   };
 
   $scope.getLocalFile = function(event) {
+    console.log(event);
     $scope.view.filePath = event.target.files[0].name;
     if (event.target.files[0].size > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
       $scope.view.windowing.show = true;
@@ -657,7 +658,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       if (field.highlighted === true && field.highlightThreshold !== null) {
         selected = find_where(backupCSV, field.name, field.highlightThreshold);
         // compute optimal/visible high. radius as 1% of screen area
-        modDt = 0.01 * loadedCSV.length; 
+        modDt = 0.01 * loadedCSV.length;
         // plot all of them
         var transparency = 0.4; // min/max opacity for overlapping highs
         color = field.color.replace("rgb", "rgba").replace(")", "," + transparency + ")");

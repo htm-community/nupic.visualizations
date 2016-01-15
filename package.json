@@ -20,6 +20,9 @@
   "engines": {
     "node": "4.2.2"
   },
+  "scripts" : {
+    "start" : "node build/server/server.js"
+  },
   "dependencies": {
     "express": "~4.13.3",
     "request": "~2.67.0",
@@ -27,7 +30,8 @@
     "serve-favicon": "~2.3.0",
     "errorhandler": "~1.4.2",
     "morgan": "~1.6.1",
-    "compression": "~1.6.0"
+    "compression": "~1.6.0",
+    "babyparse": "~0.4.3"
   },
   "devDependencies": {
     "bower": "~1.6.5",

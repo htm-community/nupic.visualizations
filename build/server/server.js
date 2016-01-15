@@ -33,8 +33,9 @@ var http = require('http');
 var logFile = fs.createWriteStream(nconf.get("expressLogFile"), {flags: 'a'}); //use {flags: 'w'} to open in write mode
 var express = require('express');
 var logger = require('morgan');
-var pageNotFound = require('./lib/pageNotFound');
 var errorHandler = require('errorhandler');
+var pageNotFound = require('./lib/pageNotFound');
+var uploadFile = require('./lib/uploadFile');
 var app = express();
 
 // if the request is for the root, we redirect to the /app path
@@ -47,6 +48,7 @@ app.use(function (req, res, next){
 });
 var server = http.createServer(app);
 
+app.all(nconf.get("localPath"), uploadFile()); // for streaming local files
 require('./lib/routes/static').addRoutes(app); // Handles the static assets, such as images, css, etc.
 require('./lib/routes/appFile').addRoutes(app); // web app
 
