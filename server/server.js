@@ -4,7 +4,7 @@ var constants = require('constants');
 var path = require('path');
 var nconf = require('nconf');
 var fs = require('fs');
-var pathToConfigs = process.env.NODE_CONF || '/etc/node/conf';
+var pathToConfigs = process.env.NVIZ_CONF || '/etc/node/nviz/conf';
 var configs = [];
 
 try {
