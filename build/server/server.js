@@ -48,9 +48,19 @@ app.use(function (req, res, next){
   }
 });
 var server = http.createServer(app);
+var io = require('socket.io')(server);
 
-app.all(nconf.get("localPath"), localFile()); // for streaming local files
-app.all(nconf.get("remotePath"), remoteFile()); // for streaming local files
+/* socket.io test */
+io.on('connection', function (socket) {
+  socket.emit('news', { hello: 'world' });
+  socket.on('my other event', function (data) {
+    console.log(data);
+  });
+});
+
+
+app.get(nconf.get("localPath"), localFile()); // for streaming local files
+app.get(nconf.get("remotePath"), remoteFile()); // for streaming local files
 require('./lib/routes/static').addRoutes(app); // Handles the static assets, such as images, css, etc.
 require('./lib/routes/appFile').addRoutes(app); // web app
 

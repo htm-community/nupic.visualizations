@@ -25,7 +25,8 @@ var externalJS = [
   "client/bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js",
   "client/bower_components/dygraphs/dygraph-combined.js",
   "client/bower_components/moment/min/moment.min.js",
-  "client/bower_components/papaparse/papaparse.min.js"
+  "client/bower_components/papaparse/papaparse.min.js",
+  "client/bower_components/angular-socket-io/socket.min.js"
 ];
 
 gulp.task('default', ['test','build']);

@@ -42,10 +42,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
   };
 
-  $scope.getFile = function() {
-
-  };
-
   $scope.getRemoteFile = function() {
     $scope.view.windowing.show = false;
     $scope.view.windowing.paused = false;
@@ -78,17 +74,43 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     });
   };
 
+  $scope.getFile = function() {
+    if(isLocal()) {
+      var config = {
+        params : {
+          "filePath" : $scope.view.filePath
+        }
+      };
+      $http.get("/local", config).then(function(response){
+        console.log(response);
+      });
+    } else if(isRemote()) {
+
+    }
+  };
+
   $scope.validPath = function() {
+    if (isRemote() || isLocal()) {
+      return true;
+    }
+    return false;
+  };
+
+  var isRemote = function() {
     var urlParts = $scope.view.filePath.split("://");
+    if (urlParts.length > 1) {
+      var tldParts = urlParts[1].split(".");
+      if ((urlParts[0] === "https" || urlParts[0] === "http") && tldParts.length > 1 && tldParts[1].length > 0) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  var isLocal = function() {
     var pathParts = $scope.view.filePath.split("/");
     if (pathParts.length > 1 && pathParts[0].length < 1 && pathParts[1].length > 0) {
       return true;
-    }
-    if (urlParts.length > 1) {
-      var tldParts = urlParts[1].split(".");
-      if (tldParts.length > 1 && tldParts[1].length > 0) {
-        return true;
-      }
     }
     return false;
   };
