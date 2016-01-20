@@ -35,7 +35,8 @@ var express = require('express');
 var logger = require('morgan');
 var errorHandler = require('errorhandler');
 var pageNotFound = require('./lib/pageNotFound');
-var uploadFile = require('./lib/uploadFile');
+var localFile = require('./lib/localFile');
+var remoteFile = require('./lib/remoteFile');
 var app = express();
 
 // if the request is for the root, we redirect to the /app path
@@ -48,7 +49,8 @@ app.use(function (req, res, next){
 });
 var server = http.createServer(app);
 
-app.all(nconf.get("localPath"), uploadFile()); // for streaming local files
+app.all(nconf.get("localPath"), localFile()); // for streaming local files
+app.all(nconf.get("remotePath"), remoteFile()); // for streaming local files
 require('./lib/routes/static').addRoutes(app); // Handles the static assets, such as images, css, etc.
 require('./lib/routes/appFile').addRoutes(app); // web app
 

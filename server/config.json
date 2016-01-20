@@ -5,5 +5,6 @@
   "expressLogFile" : "./express.log",
   "appPath" : "/app",
   "localPath" : "/local",
+  "remotePath" : "/remote",
   "allowLocalFileAccess" : true
 }

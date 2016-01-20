@@ -28,7 +28,7 @@
                 <div class="input-group">
                   <input type="text" class="form-control file-name" ng-model="view.filePath">
                   <span class="input-group-btn">
-                    <button class="btn btn-default" type="button" ng-disabled="!canDownload()" ng-click="getRemoteFile()">Download</button>
+                    <button class="btn btn-default" type="button" ng-disabled="!validPath()" ng-click="getFile()">Get File</button>
                   </span>
                 </div>
                 <span class="btn btn-primary btn-file">
