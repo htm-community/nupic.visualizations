@@ -81,7 +81,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   $scope.validPath = function() {
     var urlParts = $scope.view.filePath.split("://");
     var pathParts = $scope.view.filePath.split("/");
-    if (pathParts.length > 1 && pathParts[1].length > 0) {
+    if (pathParts.length > 1 && pathParts[0].length < 1 && pathParts[1].length > 0) {
       return true;
     }
     if (urlParts.length > 1) {
