@@ -14,6 +14,8 @@ module.exports = function(config){
   // list of files / patterns to load in the browser
   files : [
     'client/bower_components/angular/angular.js',
+    'client/bower_components/angular-socket-io/socket.js',
+    'client/bower_components/angular-socket-io/mock/socket-io.js',
     'client/bower_components/angular-mocks/angular-mocks.js',
     'client/bower_components/angular-bootstrap/ui-bootstrap-tpls.js',
     'client/bower_components/papaparse/papaparse.js',

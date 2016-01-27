@@ -5,19 +5,30 @@ describe('appCtrl', function () {
       $timeout,
       appConfig,
       $scope,
+      socketFactory,
+      socket,
+      mockIoSocket,
       appCtrl;
 
   beforeEach(module('app'));
+  beforeEach(module('btford.socket-io'));
 
-  beforeEach(inject(function(_$rootScope_, _$controller_, _$timeout_, _appConfig_){
+  beforeEach(inject(function(_$rootScope_, _$controller_, _$timeout_, _appConfig_, _socketFactory_){
     $rootScope = _$rootScope_;
     $controller = _$controller_;
     appConfig = _appConfig_;
+    socketFactory = _socketFactory_;
     $scope = $rootScope.$new();
+    mockIoSocket = io.connect();
+    socket = socketFactory({
+      ioSocket: mockIoSocket,
+      scope: $scope
+    });
     appCtrl = $controller('appCtrl', {
       $scope : $scope,
       $timeout : $timeout,
-      appConfig : appConfig
+      appConfig : appConfig,
+      socket : socket
     });
   }));
 

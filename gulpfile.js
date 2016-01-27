@@ -22,11 +22,12 @@ var server = [
 
 var externalJS = [
   "client/bower_components/angular/angular.min.js",
+  "client/bower_components/angular-socket-io/socket.min.js",
   "client/bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js",
   "client/bower_components/dygraphs/dygraph-combined.js",
   "client/bower_components/moment/min/moment.min.js",
-  "client/bower_components/papaparse/papaparse.min.js",
-  "client/bower_components/angular-socket-io/socket.min.js"
+  "client/bower_components/papaparse/papaparse.js",
+  "node_modules/socket.io-stream/socket.io-stream.js"
 ];
 
 gulp.task('default', ['test','build']);
@@ -42,7 +43,7 @@ gulp.task('appjs', ['clean'], function() {
     .pipe(jshint())
     .pipe(jshint.reporter('default'))
     .pipe(concat('app.js'))
-    .pipe(uglify())
+    //.pipe(uglify())
     .pipe(gulp.dest('build/client'));
 });
 

@@ -1,6 +1,6 @@
 // Web UI:
 
-angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'appConfig', function($scope, $http, $timeout, appConfig) {
+angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'appConfig', 'socket', function($scope, $http, $timeout, appConfig, socket) {
 
   $scope.view = {
     fieldState: [],
@@ -30,7 +30,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     resetFieldIdx = -1,
     streamParser = null,
     firstDataLoaded = false;
-
 
   // the "Show/Hide Options" button
   $scope.toggleOptions = function() {
@@ -81,11 +80,12 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
           "filePath" : $scope.view.filePath
         }
       };
-      $http.get("/local", config).then(function(response){
-        console.log(response);
+      //var stream = ss.createStream();
+      socket.on('data', function(data){
+        console.log(data);
       });
-    } else if(isRemote()) {
-
+      socket.emit('getLocalFile', {path : $scope.view.filePath});
+      //streamLocalFile(stream);
     }
   };
 
@@ -303,6 +303,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
 
   // read and parse a CSV file
   var streamLocalFile = function(file) {
+    console.log(typeof file);
     resetFields();
     Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
     var firstChunkComplete = false;
