@@ -10,14 +10,13 @@ module.exports = function(socket) {
     socket.emit('status', { message : "Getting " + message.path });
     fs.access(message.path, fs.R_OK, function (err) {
       if (err) {
-        if (err.code === "ENOENT") {
-          socket.emit("error", {message : "File not found."});
-        } else {
-          socket.emit("error", {message : "Permission denied."}); // TODO explicily handle permission denied error.
-        }
+        socket.emit("errorMessage", { message : err});
       } else {
         // Create the parser
-        var firstChunk = true;
+        var counter = 0;
+        var limit = 100;
+        var chunk = [];
+
         var parser = parse({
           delimiter: ",",
           comment: "#",
@@ -37,13 +36,14 @@ module.exports = function(socket) {
           console.log(err.message);
         });
         // send chunks
-        parser.on('data', function(chunk){
-          //if (firstChunk) {
-          //  generateFieldMap(chunk);
-          //  firstChunk = false;
-          //} else {
+        parser.on('data', function(row){
+          if (counter >= limit) {
             socket.emit("data", chunk);
-          //}
+            chunk.length = 0;
+            counter = 0;
+          }
+          chunk.push(row);
+          counter++;
         });
         // When we are done, test that the parsed output matched what expected
         parser.on('finish', function(){

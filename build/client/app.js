@@ -8,14 +8,14 @@ angular.module('app').factory('socket', ['socketFactory', function(socketFactory
     console.log("Connected to server socket.");
   });
 
-  mySocket.on("status", function(message){
-    console.log(message.message);
+  mySocket.on("status", function(status){
+    console.log(status.message);
   });
-  /*
-  mySocket.on("data", function(data) {
-    console.log(data);
+
+  mySocket.on("errorMessage", function(error) {
+    console.error(error.message);
   });
-  */
+
   return mySocket;
 
 }]);
@@ -150,7 +150,12 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       };
       //var stream = ss.createStream();
       socket.on('data', function(data){
-        console.log(data);
+        if(!firstDataLoaded) {
+          loadedFields = generateFieldMap(data, appConfig.EXCLUDE_FIELDS);
+          data.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+          firstDataLoaded = true;
+        }
+        loadData(data);
       });
       socket.emit('getLocalFile', {path : $scope.view.filePath});
       //streamLocalFile(stream);
@@ -562,13 +567,16 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // If TIMESTAMP is not present, use iterations instead and set global useIterationsForTimestamp=true
   // also determine if dealing with OPF file and use its special format (skip 3 header rows, ...)
   var generateFieldMap = function(rows, excludes) {
-    var header = rows[0].split(',');
+    console.log(rows);
+    var header = [];
+    angular.forEach(rows[0], function(value, key){
+      header.push(value);
+    });
     // OPF
-    var meta = Papa.parse(rows[2], {
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      comments: '#'
-    }).data[0]; // to get correct data-types
+    var meta = [];
+    angular.forEach(rows[2], function(value, key){
+      meta.push(value);
+    });
     var isOPF = true; //determine OPF by having only meta chars at 3rd row (not numeric, unlike normal data)
     for (var i = 0; i < meta.length; i++) {
       if (typeof(meta[i]) === "number") {
@@ -592,14 +600,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
     // add all numeric fields not in excludes
     var row = rows[rows.length - 2]; // take end-1th row to avoid incompletely loaded data due to chunk size
-    row = Papa.parse(row, {
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      comments: '#'
-    }); // to get correct data-types
     var headerFields = [];
     for (var j = 0; j < header.length; j++) {
-      var value = row.data[0][j]; // Papa results structure
+      var value = row[j]; // Papa results structure
       var key = header[j];
       if ((typeof(value) === "number") && excludes.indexOf(key) === -1) {
         headerFields.push(key);
