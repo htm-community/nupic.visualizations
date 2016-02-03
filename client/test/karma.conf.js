@@ -18,7 +18,6 @@ module.exports = function(config){
     'client/bower_components/angular-socket-io/mock/socket-io.js',
     'client/bower_components/angular-mocks/angular-mocks.js',
     'client/bower_components/angular-bootstrap/ui-bootstrap-tpls.js',
-    'client/bower_components/papaparse/papaparse.js',
     'client/bower_components/moment/moment.js',
     'client/bower_components/dygraphs/dygraph-combined.js',
     'client/src/**/*.js',

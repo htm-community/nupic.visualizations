@@ -13,7 +13,7 @@ angular.module('app').factory('socket', ['socketFactory', function(socketFactory
   });
 
   mySocket.on("errorMessage", function(error) {
-    console.error(error.message);
+    console.error(error.message); // TODO: handle different types of errors, and give the user feedback
   });
 
   return mySocket;
@@ -108,7 +108,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       });
     }
   };
-
+  /*
   $scope.getRemoteFile = function() {
     $scope.view.windowing.show = false;
     $scope.view.windowing.paused = false;
@@ -140,7 +140,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       downloadFile($scope.view.filePath);
     });
   };
-
+  */
   $scope.getFile = function() {
     if(isLocal()) {
       var config = {
@@ -186,54 +186,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       return true;
     }
     return false;
-  };
-
-  $scope.canDownload = function() {
-    var pathParts = $scope.view.filePath.split("://");
-    if ((pathParts[0] === "https" || pathParts[0] === "http") && pathParts.length > 1 && pathParts[1].length > 0) {
-      return true;
-    } else {
-      return false;
-    }
-  };
-
-  $scope.abortParse = function() {
-    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.abort)) {
-      streamParser.abort();
-      $scope.view.windowing.paused = false;
-      $scope.view.windowing.aborted = true;
-    }
-  };
-
-  $scope.pauseParse = function() {
-    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.pause)) {
-      streamParser.pause();
-      $scope.view.windowing.paused = true;
-    }
-  };
-
-  $scope.resumeParse = function() {
-    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.resume)) {
-      streamParser.resume();
-      $scope.view.windowing.paused = false;
-    }
-  };
-
-  $scope.getLocalFile = function(event) {
-    console.log(event);
-    $scope.view.filePath = event.target.files[0].name;
-    if (event.target.files[0].size > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
-      $scope.view.windowing.show = true;
-      $scope.view.windowing.size = appConfig.WINDOW_SIZE;
-      handleError("File too large, automatic sliding window enabled.", "warning");
-    }
-    $scope.view.loading = true;
-    streamLocalFile(event.target.files[0]);
-  };
-
-  var getRemoteFileName = function(url) {
-    var pathParts = url.split("/");
-    return pathParts[pathParts.length - 1];
   };
 
   var loadData = function(data) {
@@ -312,99 +264,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loadedCSV.length = 0;
     loadedFields.length = 0;
     firstDataLoaded = false;
-  };
-
-  var downloadFile = function(url) {
-    resetFields();
-    Papa.parse(url, {
-      download: true,
-      skipEmptyLines: true,
-      header: true,
-      dynamicTyping: true,
-      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
-      comments: "#",
-      complete: function(results) {
-        if (!angular.isDefined(results.data)) {
-          handleError("An error occurred when attempting to download file.", "danger");
-        } else {
-          $scope.view.loadedFileName = getRemoteFileName(url);
-          loadedFields = generateFieldMap(results.data, appConfig.EXCLUDE_FIELDS);
-          results.data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
-          loadData(results.data);
-        }
-        $scope.view.loading = false;
-        $scope.$apply();
-      },
-      error: function(error) {
-        $scope.view.loading = false;
-        handleError("Could not download file.", "danger");
-      }
-    });
-  };
-
-  var streamRemoteFile = function(url) {
-    resetFields();
-    Papa.RemoteChunkSize = appConfig.REMOTE_CHUNK_SIZE;
-    var firstChunkComplete = false;
-    Papa.parse(url, {
-      download: true,
-      skipEmptyLines: true,
-      header: true,
-      dynamicTyping: true,
-      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
-      comments: "#",
-      chunk: function(chunk, parser) {
-        streamParser = parser;
-        loadData(chunk.data);
-      },
-      beforeFirstChunk: function(chunk) {
-        $scope.view.loadedFileName = getRemoteFileName(url);
-        var rows = chunk.split(/\r\n|\r|\n/);
-        loadedFields = generateFieldMap(rows, appConfig.EXCLUDE_FIELDS);
-        rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
-        $scope.view.loading = false;
-        rows = rows.join('\n');
-        return rows;
-      },
-      //fastMode: true, // automatically enabled if no " appear
-      error: function(error) {
-        handleError("Could not stream file.", "danger");
-        $scope.view.loading = false;
-      }
-    });
-  };
-
-  // read and parse a CSV file
-  var streamLocalFile = function(file) {
-    console.log(typeof file);
-    resetFields();
-    Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
-    var firstChunkComplete = false;
-    Papa.parse(file, {
-      skipEmptyLines: true,
-      header: true,
-      dynamicTyping: true,
-      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
-      comments: "#",
-      chunk: function(chunk, parser) {
-        streamParser = parser;
-        loadData(chunk.data);
-      },
-      beforeFirstChunk: function(chunk) {
-        $scope.view.loadedFileName = file.name;
-        var rows = chunk.split(/\r\n|\r|\n/);
-        loadedFields = generateFieldMap(rows, appConfig.EXCLUDE_FIELDS);
-        rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
-        $scope.view.loading = false;
-        rows = rows.join('\n');
-        return rows;
-      },
-      //fastMode: true, // automatically enabled if no " appear
-      error: function(error) {
-        handleError(error, "danger");
-        $scope.view.loading = false;
-      }
-    });
   };
 
   // show errors as "notices" in the UI
@@ -787,6 +646,150 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
 
   } // end highlightAnomaly callback
 
+  // the code below is no longer necessary, as we are moving to server-side parsing.
+
+  /*
+  $scope.canDownload = function() {
+    var pathParts = $scope.view.filePath.split("://");
+    if ((pathParts[0] === "https" || pathParts[0] === "http") && pathParts.length > 1 && pathParts[1].length > 0) {
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  $scope.abortParse = function() {
+    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.abort)) {
+      streamParser.abort();
+      $scope.view.windowing.paused = false;
+      $scope.view.windowing.aborted = true;
+    }
+  };
+
+  $scope.pauseParse = function() {
+    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.pause)) {
+      streamParser.pause();
+      $scope.view.windowing.paused = true;
+    }
+  };
+
+  $scope.resumeParse = function() {
+    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.resume)) {
+      streamParser.resume();
+      $scope.view.windowing.paused = false;
+    }
+  };
+
+  $scope.getLocalFile = function(event) {
+    console.log(event);
+    $scope.view.filePath = event.target.files[0].name;
+    if (event.target.files[0].size > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
+      $scope.view.windowing.show = true;
+      $scope.view.windowing.size = appConfig.WINDOW_SIZE;
+      handleError("File too large, automatic sliding window enabled.", "warning");
+    }
+    $scope.view.loading = true;
+    streamLocalFile(event.target.files[0]);
+  };
+
+  var getRemoteFileName = function(url) {
+    var pathParts = url.split("/");
+    return pathParts[pathParts.length - 1];
+  };
+
+  var downloadFile = function(url) {
+    resetFields();
+    Papa.parse(url, {
+      download: true,
+      skipEmptyLines: true,
+      header: true,
+      dynamicTyping: true,
+      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
+      comments: "#",
+      complete: function(results) {
+        if (!angular.isDefined(results.data)) {
+          handleError("An error occurred when attempting to download file.", "danger");
+        } else {
+          $scope.view.loadedFileName = getRemoteFileName(url);
+          loadedFields = generateFieldMap(results.data, appConfig.EXCLUDE_FIELDS);
+          results.data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
+          loadData(results.data);
+        }
+        $scope.view.loading = false;
+        $scope.$apply();
+      },
+      error: function(error) {
+        $scope.view.loading = false;
+        handleError("Could not download file.", "danger");
+      }
+    });
+  };
+
+  var streamRemoteFile = function(url) {
+    resetFields();
+    Papa.RemoteChunkSize = appConfig.REMOTE_CHUNK_SIZE;
+    var firstChunkComplete = false;
+    Papa.parse(url, {
+      download: true,
+      skipEmptyLines: true,
+      header: true,
+      dynamicTyping: true,
+      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
+      comments: "#",
+      chunk: function(chunk, parser) {
+        streamParser = parser;
+        loadData(chunk.data);
+      },
+      beforeFirstChunk: function(chunk) {
+        $scope.view.loadedFileName = getRemoteFileName(url);
+        var rows = chunk.split(/\r\n|\r|\n/);
+        loadedFields = generateFieldMap(rows, appConfig.EXCLUDE_FIELDS);
+        rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+        $scope.view.loading = false;
+        rows = rows.join('\n');
+        return rows;
+      },
+      //fastMode: true, // automatically enabled if no " appear
+      error: function(error) {
+        handleError("Could not stream file.", "danger");
+        $scope.view.loading = false;
+      }
+    });
+  };
+
+  // read and parse a CSV file
+  var streamLocalFile = function(file) {
+    console.log(typeof file);
+    resetFields();
+    Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
+    var firstChunkComplete = false;
+    Papa.parse(file, {
+      skipEmptyLines: true,
+      header: true,
+      dynamicTyping: true,
+      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
+      comments: "#",
+      chunk: function(chunk, parser) {
+        streamParser = parser;
+        loadData(chunk.data);
+      },
+      beforeFirstChunk: function(chunk) {
+        $scope.view.loadedFileName = file.name;
+        var rows = chunk.split(/\r\n|\r|\n/);
+        loadedFields = generateFieldMap(rows, appConfig.EXCLUDE_FIELDS);
+        rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+        $scope.view.loading = false;
+        rows = rows.join('\n');
+        return rows;
+      },
+      //fastMode: true, // automatically enabled if no " appear
+      error: function(error) {
+        handleError(error, "danger");
+        $scope.view.loading = false;
+      }
+    });
+  };
+  */
 
 }]);
 
