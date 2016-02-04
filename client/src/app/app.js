@@ -16,6 +16,10 @@ angular.module('app').factory('socket', ['socketFactory', function(socketFactory
     console.error(error.message); // TODO: handle different types of errors, and give the user feedback
   });
 
+  mySocket.on("fileRetrievalError", function(error){
+    console.error(error.statusCode, error.statusMessage);
+  });
+
   return mySocket;
 
 }]);

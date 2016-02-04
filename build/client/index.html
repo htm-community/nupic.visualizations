@@ -28,13 +28,8 @@
               <div class="form-group">
                 <div class="input-group">
                   <input type="text" class="form-control file-name" ng-model="view.filePath">
-                  <span class="input-group-btn">
-                    <button class="btn btn-default" type="button" ng-disabled="!validPath()" ng-click="getFile()">Get File</button>
-                  </span>
                 </div>
-                <span class="btn btn-primary btn-file">
-                  Browse&hellip; <input type="file" file-upload-change="getLocalFile">
-                </span>
+                <button class="btn btn-primary" type="button" ng-disabled="!validPath()" ng-click="getFile()">Get file &hellip;</button>
                 <div class="errors">
                   <div ng-repeat="error in view.errors track by $index" class="alert alert-{{error.type}} alert-dismissible" role="alert">
                     <button type="button" class="close" aria-label="Close" ng-click="clearError($index)"><span aria-hidden="true">&times;</span></button>

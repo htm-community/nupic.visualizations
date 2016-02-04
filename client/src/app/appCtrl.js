@@ -31,6 +31,16 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     streamParser = null,
     firstDataLoaded = false;
 
+  // what to do when data is sent from server
+  socket.on('data', function(data){
+    if(!firstDataLoaded) {
+      loadedFields = generateFieldMap(data, appConfig.EXCLUDE_FIELDS);
+      data.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+      firstDataLoaded = true;
+    }
+    loadData(data);
+  });
+
   // the "Show/Hide Options" button
   $scope.toggleOptions = function() {
     $scope.view.optionsVisible = !$scope.view.optionsVisible;
@@ -40,57 +50,18 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       });
     }
   };
-  /*
-  $scope.getRemoteFile = function() {
-    $scope.view.windowing.show = false;
-    $scope.view.windowing.paused = false;
-    $scope.view.windowing.aborted = false;
-    $scope.$broadcast("fileUploadChange");
-    $scope.view.loading = true;
-    // we do a quick test here to see if the server supports the Range header.
-    // If so, we try to stream. If not, we try to download.
-    $http.head($scope.view.filePath, {
-      'headers': {
-        'Range': 'bytes=0-32'
-      }
-    }).then(function(response) {
-      if (response.status === 206) {
-        // now we check to see how big the file is
-        $http.head($scope.view.filePath).then(function(response) {
-          var contentLength = response.headers('Content-Length');
-          if (contentLength > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
-            $scope.view.windowing.show = true;
-            $scope.view.windowing.size = appConfig.WINDOW_SIZE;
-            handleError("File too large, automatic sliding window enabled.", "warning");
-          }
-          streamRemoteFile($scope.view.filePath);
-        });
-      } else {
-        downloadFile($scope.view.filePath);
-      }
-    }, function() {
-      downloadFile($scope.view.filePath);
-    });
-  };
-  */
+
   $scope.getFile = function() {
+    resetFields();
+    var config = {
+      params : {
+        "filePath" : $scope.view.filePath
+      }
+    };
     if(isLocal()) {
-      var config = {
-        params : {
-          "filePath" : $scope.view.filePath
-        }
-      };
-      //var stream = ss.createStream();
-      socket.on('data', function(data){
-        if(!firstDataLoaded) {
-          loadedFields = generateFieldMap(data, appConfig.EXCLUDE_FIELDS);
-          data.splice(1, appConfig.HEADER_SKIPPED_ROWS);
-          firstDataLoaded = true;
-        }
-        loadData(data);
-      });
       socket.emit('getLocalFile', {path : $scope.view.filePath});
-      //streamLocalFile(stream);
+    } else if (isRemote()) {
+      socket.emit('getRemoteFile', {url : $scope.view.filePath});
     }
   };
 
@@ -358,27 +329,26 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // If TIMESTAMP is not present, use iterations instead and set global useIterationsForTimestamp=true
   // also determine if dealing with OPF file and use its special format (skip 3 header rows, ...)
   var generateFieldMap = function(rows, excludes) {
-    console.log(rows);
     var header = [];
     angular.forEach(rows[0], function(value, key){
-      header.push(value);
+      header.push(key);
     });
     // OPF
-    var meta = [];
-    angular.forEach(rows[2], function(value, key){
-      meta.push(value);
+    var OPFmeta = [];
+    angular.forEach(rows[1], function(value, key){
+      OPFmeta.push(value);
     });
     var isOPF = true; //determine OPF by having only meta chars at 3rd row (not numeric, unlike normal data)
-    for (var i = 0; i < meta.length; i++) {
-      if (typeof(meta[i]) === "number") {
+    for (var i = 0; i < OPFmeta.length; i++) {
+      if (typeof(OPFmeta[i]) === "number") {
         isOPF = false;
-      } else if (meta[i] === 'R' || meta[i] === 'r') {
+      } else if (OPFmeta[i] === 'R' || OPFmeta[i] === 'r') {
         resetFieldIdx = i;
       }
     }
     if (isOPF) {
-      console.log("Detected OPF/NuPIC file. ");
-      appConfig.HEADER_SKIPPED_ROWS = 3; //default for OPF
+      console.log("Detected OPF/NuPIC file.");
+      appConfig.HEADER_SKIPPED_ROWS = 2; //default for OPF
     }
 
     if (header.indexOf(appConfig.TIMESTAMP) === -1) {
@@ -390,18 +360,12 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       //FIXME add new field time with orig time values
     }
     // add all numeric fields not in excludes
-    var row = rows[rows.length - 2]; // take end-1th row to avoid incompletely loaded data due to chunk size
     var headerFields = [];
-    for (var j = 0; j < header.length; j++) {
-      var value = row[j]; // Papa results structure
-      var key = header[j];
+    angular.forEach(rows[rows.length -1], function(value, key) {
       if ((typeof(value) === "number") && excludes.indexOf(key) === -1) {
         headerFields.push(key);
       }
-    }
-
-    // add 'threshold' field for anomaly detection
-    //headerFields.push('threshold*');
+    });
 
     if (headerFields.indexOf(appConfig.TIMESTAMP) === -1) { //missing
       headerFields.unshift(appConfig.TIMESTAMP); //append timestamp as 1st field
@@ -581,6 +545,38 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // the code below is no longer necessary, as we are moving to server-side parsing.
 
   /*
+  $scope.getRemoteFile = function() {
+    $scope.view.windowing.show = false;
+    $scope.view.windowing.paused = false;
+    $scope.view.windowing.aborted = false;
+    $scope.$broadcast("fileUploadChange");
+    $scope.view.loading = true;
+    // we do a quick test here to see if the server supports the Range header.
+    // If so, we try to stream. If not, we try to download.
+    $http.head($scope.view.filePath, {
+      'headers': {
+        'Range': 'bytes=0-32'
+      }
+    }).then(function(response) {
+      if (response.status === 206) {
+        // now we check to see how big the file is
+        $http.head($scope.view.filePath).then(function(response) {
+          var contentLength = response.headers('Content-Length');
+          if (contentLength > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
+            $scope.view.windowing.show = true;
+            $scope.view.windowing.size = appConfig.WINDOW_SIZE;
+            handleError("File too large, automatic sliding window enabled.", "warning");
+          }
+          streamRemoteFile($scope.view.filePath);
+        });
+      } else {
+        downloadFile($scope.view.filePath);
+      }
+    }, function() {
+      downloadFile($scope.view.filePath);
+    });
+  };
+
   $scope.canDownload = function() {
     var pathParts = $scope.view.filePath.split("://");
     if ((pathParts[0] === "https" || pathParts[0] === "http") && pathParts.length > 1 && pathParts[1].length > 0) {
