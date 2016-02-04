@@ -34,7 +34,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
 
   // what to do when data is sent from server
   socket.on('data', function(data){
-    if (!firstDataLoaded && firstRows.length < 100) {
+    if (!firstDataLoaded && firstRows.length < 20) {
       firstRows.push(data);
     } else {
       if(!firstDataLoaded) {
@@ -69,6 +69,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
 
   $scope.getFile = function() {
     resetFields();
+    $scope.view.loadedFileName = $scope.view.filePath;
     var config = {
       params : {
         "filePath" : $scope.view.filePath
@@ -183,6 +184,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loadedCSV.length = 0;
     loadedFields.length = 0;
     firstDataLoaded = false;
+    firstRows.length = 0;
   };
 
   // show errors as "notices" in the UI

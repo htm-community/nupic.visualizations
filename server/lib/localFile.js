@@ -1,6 +1,7 @@
 var parse = require('csv-parse');
 var fs = require('fs');
 var request = require('request');
+var growingFile = require('growing-file');
 
 module.exports = function(socket) {
 
@@ -60,7 +61,12 @@ module.exports = function(socket) {
         });
       } else {
         // read file
-        fs.createReadStream(message.path, { end : false }).pipe(localParser);
+        var options = {
+          timeout: 10000,
+          interval: 100,
+          startFromEnd: false
+        };
+        growingFile.open(message.path, options).pipe(localParser);
       }
     });
   });

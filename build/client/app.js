@@ -106,7 +106,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
 
   // what to do when data is sent from server
   socket.on('data', function(data){
-    if (!firstDataLoaded && firstRows.length < 100) {
+    if (!firstDataLoaded && firstRows.length < 20) {
       firstRows.push(data);
     } else {
       if(!firstDataLoaded) {
@@ -141,6 +141,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
 
   $scope.getFile = function() {
     resetFields();
+    $scope.view.loadedFileName = $scope.view.filePath;
     var config = {
       params : {
         "filePath" : $scope.view.filePath
@@ -255,6 +256,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loadedCSV.length = 0;
     loadedFields.length = 0;
     firstDataLoaded = false;
+    firstRows.length = 0;
   };
 
   // show errors as "notices" in the UI
@@ -877,6 +879,16 @@ angular.module('app').directive('highlightField', [function() {
   };
 }]);
 
+angular.module('app').filter('bytes', function() {
+  return function(bytes, precision) {
+    if (isNaN(parseFloat(bytes)) || !isFinite(bytes)) return '-';
+    if (typeof precision === 'undefined') precision = 1;
+    var units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
+      number = Math.floor(Math.log(bytes) / Math.log(1024));
+    return (bytes / Math.pow(1024, Math.floor(number))).toFixed(precision) +  ' ' + units[number];
+  };
+});
+
 angular.module('uploadFile', []).factory('UploadFile', ['$http', function ($http){
 
   var onSuccess = function() {
@@ -900,13 +912,3 @@ angular.module('uploadFile', []).factory('UploadFile', ['$http', function ($http
   return service;
 
 }]);
-
-angular.module('app').filter('bytes', function() {
-  return function(bytes, precision) {
-    if (isNaN(parseFloat(bytes)) || !isFinite(bytes)) return '-';
-    if (typeof precision === 'undefined') precision = 1;
-    var units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
-      number = Math.floor(Math.log(bytes) / Math.log(1024));
-    return (bytes / Math.pow(1024, Math.floor(number))).toFixed(precision) +  ' ' + units[number];
-  };
-});
