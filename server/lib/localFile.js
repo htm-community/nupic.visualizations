@@ -7,11 +7,8 @@ module.exports = function(socket) {
   socket.emit("status", {message : "connected"});
 
   function makeParser() {
-    // Create the parser
-    var counter = 0;
-    var limit = 100;
-    var chunk = [];
 
+    // Create the parser
     var parser = parse({
       delimiter: ",",
       comment: "#",
@@ -24,20 +21,15 @@ module.exports = function(socket) {
     parser.on('error', function(err){
       socket.emit('errorMessage', { message : err.message });
     });
+
     // send chunks
     parser.on('data', function(row){
-      if (counter >= limit) {
-        socket.emit("data", chunk);
-        chunk.length = 0;
-        counter = 0;
-      }
-      chunk.push(row);
-      counter++;
+      socket.emit("data", row);
     });
 
     // When we are done, test that the parsed output matched what expected
     parser.on('finish', function(){
-      socket.emit("status", {message : "Finished"});
+      socket.emit("finish", {message : "Finished"});
     });
 
     return parser;
@@ -68,7 +60,7 @@ module.exports = function(socket) {
         });
       } else {
         // read file
-        fs.createReadStream(message.path).pipe(localParser);
+        fs.createReadStream(message.path, { end : false }).pipe(localParser);
       }
     });
   });

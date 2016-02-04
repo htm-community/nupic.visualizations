@@ -29,16 +29,32 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     iteration = 0,
     resetFieldIdx = -1,
     streamParser = null,
-    firstDataLoaded = false;
+    firstDataLoaded = false,
+    firstRows = [];
 
   // what to do when data is sent from server
   socket.on('data', function(data){
-    if(!firstDataLoaded) {
-      loadedFields = generateFieldMap(data, appConfig.EXCLUDE_FIELDS);
-      data.splice(1, appConfig.HEADER_SKIPPED_ROWS);
-      firstDataLoaded = true;
+    if (!firstDataLoaded && firstRows.length < 100) {
+      firstRows.push(data);
+    } else {
+      if(!firstDataLoaded) {
+        loadedFields = generateFieldMap(firstRows, appConfig.EXCLUDE_FIELDS);
+        firstRows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+        firstDataLoaded = true;
+        loadData(firstRows);
+      } else {
+        loadData([data]);
+      }
     }
-    loadData(data);
+  });
+
+  socket.on('finish', function(){
+    if (!firstDataLoaded) {
+      loadedFields = generateFieldMap(firstRows, appConfig.EXCLUDE_FIELDS);
+      firstRows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+      firstDataLoaded = true;
+      loadData(firstRows);
+    }
   });
 
   // the "Show/Hide Options" button

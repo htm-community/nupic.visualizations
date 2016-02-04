@@ -101,16 +101,32 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     iteration = 0,
     resetFieldIdx = -1,
     streamParser = null,
-    firstDataLoaded = false;
+    firstDataLoaded = false,
+    firstRows = [];
 
   // what to do when data is sent from server
   socket.on('data', function(data){
-    if(!firstDataLoaded) {
-      loadedFields = generateFieldMap(data, appConfig.EXCLUDE_FIELDS);
-      data.splice(1, appConfig.HEADER_SKIPPED_ROWS);
-      firstDataLoaded = true;
+    if (!firstDataLoaded && firstRows.length < 100) {
+      firstRows.push(data);
+    } else {
+      if(!firstDataLoaded) {
+        loadedFields = generateFieldMap(firstRows, appConfig.EXCLUDE_FIELDS);
+        firstRows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+        firstDataLoaded = true;
+        loadData(firstRows);
+      } else {
+        loadData([data]);
+      }
     }
-    loadData(data);
+  });
+
+  socket.on('finish', function(){
+    if (!firstDataLoaded) {
+      loadedFields = generateFieldMap(firstRows, appConfig.EXCLUDE_FIELDS);
+      firstRows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+      firstDataLoaded = true;
+      loadData(firstRows);
+    }
   });
 
   // the "Show/Hide Options" button
@@ -861,16 +877,6 @@ angular.module('app').directive('highlightField', [function() {
   };
 }]);
 
-angular.module('app').filter('bytes', function() {
-  return function(bytes, precision) {
-    if (isNaN(parseFloat(bytes)) || !isFinite(bytes)) return '-';
-    if (typeof precision === 'undefined') precision = 1;
-    var units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
-      number = Math.floor(Math.log(bytes) / Math.log(1024));
-    return (bytes / Math.pow(1024, Math.floor(number))).toFixed(precision) +  ' ' + units[number];
-  };
-});
-
 angular.module('uploadFile', []).factory('UploadFile', ['$http', function ($http){
 
   var onSuccess = function() {
@@ -894,3 +900,13 @@ angular.module('uploadFile', []).factory('UploadFile', ['$http', function ($http
   return service;
 
 }]);
+
+angular.module('app').filter('bytes', function() {
+  return function(bytes, precision) {
+    if (isNaN(parseFloat(bytes)) || !isFinite(bytes)) return '-';
+    if (typeof precision === 'undefined') precision = 1;
+    var units = ['bytes', 'kB', 'MB', 'GB', 'TB', 'PB'],
+      number = Math.floor(Math.log(bytes) / Math.log(1024));
+    return (bytes / Math.pow(1024, Math.floor(number))).toFixed(precision) +  ' ' + units[number];
+  };
+});
