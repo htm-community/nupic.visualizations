@@ -1,11 +1,13 @@
 var parse = require('csv-parse');
 var fs = require('fs');
 var request = require('request');
-var growingFile = require('growing-file');
 
 module.exports = function(socket) {
 
   socket.emit("status", {message : "connected"});
+
+  var Parser,
+      lastByte = -1;
 
   function makeParser() {
 
@@ -39,7 +41,7 @@ module.exports = function(socket) {
 
   // handle local files
   socket.on('getLocalFile', function(message) {
-    var localParser = makeParser();
+    Parser = makeParser();
     socket.emit('status', { message : "Getting " + message.path });
     fs.access(message.path, fs.R_OK, function (err) {
       if (err) {
@@ -62,17 +64,33 @@ module.exports = function(socket) {
       } else {
         // read file
         var options = {
-          timeout: 10000,
-          interval: 100,
-          startFromEnd: false
+          autoClose: false
         };
-        growingFile.open(message.path, options).pipe(localParser);
+        LocalFile = fs.createReadStream(message.path, options);
+        function readMore() {
+          socket.emit("status", {message : "File has updated."});
+          if (LocalFile.isPaused()) {
+            socket.emit("status", {message : "Resuming..."});
+            LocalFile.unpipe(Parser);
+            LocalFile.resume();
+            LocalFile.pipe(Parser);
+          }
+        }
+        fs.watch(message.path, readMore);
+        LocalFile.on("data", function(chunk){
+          lastByte += chunk.length;
+        });
+        LocalFile.on("end", function(){
+          LocalFile.pause();
+          socket.emit("status", {message : "Got to the end of the file. " + lastByte});
+        });
+        LocalFile.pipe(Parser);
       }
     });
   });
 
   socket.on('getRemoteFile', function(message) {
-    var remoteParser = makeParser();
+    Parser = makeParser();
     socket.emit('status', { message : "Getting " + message.url });
     request.get(message.url).on("response", function(response){
       if(response.statusCode !== 200) {
@@ -81,7 +99,7 @@ module.exports = function(socket) {
           statusMessage : response.statusMessage
         });
       }
-    }).pipe(remoteParser);
+    }).pipe(Parser);
   });
 
 };

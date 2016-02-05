@@ -53,7 +53,7 @@ angular.module('app').constant('appConfig', {
   // buffer size (in rows/items) used for DyGraph streaming, default 10000
   // each batch existing values are dropped, new WINDOW_SIZE is painted. Graph will "move to the right".
   // -1 : data never dropped, just append. Graph will "shrink".
-  WINDOW_SIZE : 10000,
+  WINDOW_SIZE : 1000,
   // MAX_FILE_SIZE:
   // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur. (default 60MB)
   // -1 to disable the functionality (can cause performance problems on large files/online monitoring)
@@ -222,7 +222,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       loadedCSV.push(row);
       backupCSV.push(angular.extend([], row));
 
-      if ($scope.view.windowing.size !== -1 && loadedCSV.length > $scope.view.windowing.size) { // sliding window trim
+      if (appConfig.WINDOW_SIZE !== -1 && loadedCSV.length > appConfig.WINDOW_SIZE) { // sliding window trim
         loadedCSV.shift();
         backupCSV.shift();
       }
