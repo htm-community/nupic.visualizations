@@ -23,7 +23,7 @@
                 <img src="/static/numenta_black.svg" alt="Numenta logo"><h1>NuPIC Visualization</h1>
               </div>
             </div>
-            <p>Enter a URL or path to a valid CSV file.</p>
+            <p>Enter a URL or path to a valid CSV file.-</p>
             <div class="form-inline">
               <div class="form-group">
                 <div class="input-group">
@@ -85,17 +85,6 @@
                   <tr field-options ng-repeat="field in view.fieldState track by field.name"></tr>
                 </tbody>
               </table>
-            </div>
-          </div>
-          <div class="windowing row" ng-show="view.windowing.show">
-            <div class="col-md-9">
-              <span class="warning">File is over {{view.windowing.threshold|bytes}}. Windowing is enabled.</span>
-            </div>
-            <div class="col-md-3" ng-hide="view.windowing.paused">
-              <button class="btn btn-primary pull-right" ng-disabled="view.windowing.aborted" ng-click="pauseParse()">Pause</button>
-            </div>
-            <div class="col-md-3" ng-show="view.windowing.paused">
-              <button class="btn btn-primary pull-right" ng-disabled="view.windowing.aborted" ng-click="resumeParse()">Resume</button>
             </div>
           </div>
         </div>

@@ -2,25 +2,25 @@ angular.module('app', ['btford.socket-io','ui.bootstrap']);
 
 angular.module('app').factory('socket', ['socketFactory', function(socketFactory){
 
-  var mySocket = socketFactory();
+  var Socket = socketFactory();
 
-  mySocket.on("connect", function(){
+  Socket.on("connect", function(){
     console.log("Connected to server socket.");
   });
 
-  mySocket.on("status", function(status){
+  Socket.on("status", function(status){
     console.log(status.message);
   });
 
-  mySocket.on("errorMessage", function(error) {
+  Socket.on("errorMessage", function(error) {
     console.error(error.message); // TODO: handle different types of errors, and give the user feedback
   });
 
-  mySocket.on("fileRetrievalError", function(error){
+  Socket.on("fileRetrievalError", function(error){
     console.error(error.statusCode, error.statusMessage);
   });
 
-  return mySocket;
+  return Socket;
 
 }]);
 
@@ -53,7 +53,7 @@ angular.module('app').constant('appConfig', {
   // buffer size (in rows/items) used for DyGraph streaming, default 10000
   // each batch existing values are dropped, new WINDOW_SIZE is painted. Graph will "move to the right".
   // -1 : data never dropped, just append. Graph will "shrink".
-  WINDOW_SIZE : 1000,
+  WINDOW_SIZE : 10000,
   // MAX_FILE_SIZE:
   // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur. (default 60MB)
   // -1 to disable the functionality (can cause performance problems on large files/online monitoring)
@@ -101,25 +101,21 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     iteration = 0,
     resetFieldIdx = -1,
     streamParser = null,
-    firstDataLoaded = false,
-    firstRows = [];
+    firstDataLoaded = false;
 
   // what to do when data is sent from server
   socket.on('data', function(data){
-    if (!firstDataLoaded && firstRows.length < 20) {
-      firstRows.push(data);
+    if (!firstDataLoaded) {
+      loadedFields = generateFieldMap(data.rows, appConfig.EXCLUDE_FIELDS);
+      data.rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+      firstDataLoaded = true;
+      loadData(data.rows);
     } else {
-      if(!firstDataLoaded) {
-        loadedFields = generateFieldMap(firstRows, appConfig.EXCLUDE_FIELDS);
-        firstRows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
-        firstDataLoaded = true;
-        loadData(firstRows);
-      } else {
-        loadData([data]);
-      }
+      loadData(data.rows);
     }
   });
 
+  /*
   socket.on('finish', function(){
     if (!firstDataLoaded) {
       loadedFields = generateFieldMap(firstRows, appConfig.EXCLUDE_FIELDS);
@@ -127,6 +123,15 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       firstDataLoaded = true;
       loadData(firstRows);
     }
+  });
+  */
+
+  socket.on('fileStats', function(stats){
+    socket.emit('getLocalFile', {
+      path : $scope.view.filePath,
+      start : 0,
+      end : stats.size
+    });
   });
 
   // the "Show/Hide Options" button
@@ -148,7 +153,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       }
     };
     if(isLocal()) {
-      socket.emit('getLocalFile', {path : $scope.view.filePath});
+      socket.emit('getFileStats', $scope.view.filePath);
+      //socket.emit('getLocalFile', {path : $scope.view.filePath});
     } else if (isRemote()) {
       socket.emit('getRemoteFile', {url : $scope.view.filePath});
     }
@@ -222,7 +228,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       loadedCSV.push(row);
       backupCSV.push(angular.extend([], row));
 
-      if (appConfig.WINDOW_SIZE !== -1 && loadedCSV.length > appConfig.WINDOW_SIZE) { // sliding window trim
+      if ($scope.view.windowing.size !== -1 && loadedCSV.length > $scope.view.windowing.size) { // sliding window trim
         loadedCSV.shift();
         backupCSV.shift();
       }
@@ -256,7 +262,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loadedCSV.length = 0;
     loadedFields.length = 0;
     firstDataLoaded = false;
-    firstRows.length = 0;
+    //firstRows.length = 0;
   };
 
   // show errors as "notices" in the UI

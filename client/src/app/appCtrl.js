@@ -29,25 +29,21 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     iteration = 0,
     resetFieldIdx = -1,
     streamParser = null,
-    firstDataLoaded = false,
-    firstRows = [];
+    firstDataLoaded = false;
 
   // what to do when data is sent from server
   socket.on('data', function(data){
-    if (!firstDataLoaded && firstRows.length < 20) {
-      firstRows.push(data);
+    if (!firstDataLoaded) {
+      loadedFields = generateFieldMap(data.rows, appConfig.EXCLUDE_FIELDS);
+      data.rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+      firstDataLoaded = true;
+      loadData(data.rows);
     } else {
-      if(!firstDataLoaded) {
-        loadedFields = generateFieldMap(firstRows, appConfig.EXCLUDE_FIELDS);
-        firstRows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
-        firstDataLoaded = true;
-        loadData(firstRows);
-      } else {
-        loadData([data]);
-      }
+      loadData(data.rows);
     }
   });
 
+  /*
   socket.on('finish', function(){
     if (!firstDataLoaded) {
       loadedFields = generateFieldMap(firstRows, appConfig.EXCLUDE_FIELDS);
@@ -55,6 +51,15 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       firstDataLoaded = true;
       loadData(firstRows);
     }
+  });
+  */
+
+  socket.on('fileStats', function(stats){
+    socket.emit('getLocalFile', {
+      path : $scope.view.filePath,
+      start : 0,
+      end : stats.size
+    });
   });
 
   // the "Show/Hide Options" button
@@ -76,7 +81,8 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       }
     };
     if(isLocal()) {
-      socket.emit('getLocalFile', {path : $scope.view.filePath});
+      socket.emit('getFileStats', $scope.view.filePath);
+      //socket.emit('getLocalFile', {path : $scope.view.filePath});
     } else if (isRemote()) {
       socket.emit('getRemoteFile', {url : $scope.view.filePath});
     }
@@ -184,7 +190,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loadedCSV.length = 0;
     loadedFields.length = 0;
     firstDataLoaded = false;
-    firstRows.length = 0;
+    //firstRows.length = 0;
   };
 
   // show errors as "notices" in the UI

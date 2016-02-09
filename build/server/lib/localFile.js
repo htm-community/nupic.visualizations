@@ -1,15 +1,52 @@
 var parse = require('csv-parse');
 var fs = require('fs');
 var request = require('request');
+var stream = require('stream');
+var byteCounter = new stream.Transform( { objectMode: true } );
 
 module.exports = function(socket) {
 
   socket.emit("status", {message : "connected"});
 
   var Parser,
-      lastByte = -1;
+      lastByte = -1,
+      fileSize = 0,
+      lastChunkSize = 0,
+      lastGoodByte = 0,
+      totalTransforms = 0,
+      totalRows = 0;
+
+  byteCounter._transform = function (chunk, encoding, done) {
+    var data = chunk.toString();
+    if (this._lastLineData) {
+      data = this._lastLineData + data ;
+    }
+    var lines = data.split('\n');
+    this._lastLineData = lines.splice(lines.length-1,1)[0];
+    lines.forEach(function(line) {
+      lastChunkSize = line.length + 1;
+      this.push(line);
+    }, this);
+    done();
+  };
+
+  byteCounter._flush = function (done) {
+    if (this._lastLineData) {
+      this.push(this._lastLineData);
+      lastChunkSize = this._lastLineData + 1;
+    }
+    this._lastLineData = null;
+    done();
+  };
 
   function makeParser() {
+
+    var firstRowRead = false;
+    var rowLength = 0;
+    var counter = 0;
+    var rows = [];
+    var start = 0;
+    var end = 0;
 
     // Create the parser
     var parser = parse({
@@ -25,18 +62,70 @@ module.exports = function(socket) {
       socket.emit('errorMessage', { message : err.message });
     });
 
-    // send chunks
-    parser.on('data', function(row){
-      socket.emit("data", row);
+    parser.on('readable', function(){
+      var row;
+      var length = 0;
+      while(row = parser.read()){
+        counter++;
+        if (!firstRowRead) {
+          rowLength = Object.keys(row).length;
+          firstRowRead = true;
+        }
+        if (Object.keys(row).length === rowLength) {
+          lastGoodByte += lastChunkSize;
+          // TODO: what if the end point comes in the middle of the value of the last field?
+          // We wouldn't know that it has been truncated.
+          if (rows.length < 100) {
+            rows.push(row);
+          } else {
+            sendRows();
+          }
+        } else {
+          sendRows();
+          socket.emit("status", { message : "Row length was not consistent on row " + counter + ". Expected " + rowLength + " got " + Object.keys(row).length + "." });
+          parser.end(); // don't read any more
+        }
+      }
     });
+
+    function sendRows() {
+      socket.emit("data", {
+        fileSize : fileSize,
+        firstGoodByte : start,
+        lastGoodByte : lastGoodByte,
+        rows : rows
+      });
+      rows.length = 0;
+    }
 
     // When we are done, test that the parsed output matched what expected
     parser.on('finish', function(){
-      socket.emit("finish", {message : "Finished"});
+      socket.emit("finish", {message : "Finished."});
+    });
+
+    parser.on('end', function(){
+      socket.emit('status', {message : "End. Total rows: " + counter + "."});
+      socket.emit("status", { message : "Total file length: " + fileSize + ". lastGoodByte: " + lastGoodByte });
+      firstRowRead = false;
+      counter = 0;
     });
 
     return parser;
   }
+
+  socket.on('getFileStats', function(path) {
+    fs.stat(path, function(err, stats){
+      if(err) {
+        socket.emit("fileRetrievalError", {
+          statusCode : response.statusCode,
+          statusMessage : response.statusMessage
+        });
+      } else {
+        fileSize = stats.size;
+        socket.emit('fileStats', stats);
+      }
+    });
+  });
 
 
   // handle local files
@@ -63,28 +152,14 @@ module.exports = function(socket) {
         });
       } else {
         // read file
+        start = message.start;
+        end = message.end;
         var options = {
-          autoClose: false
+          start : message.start,
+          end : message.end
         };
         LocalFile = fs.createReadStream(message.path, options);
-        function readMore() {
-          socket.emit("status", {message : "File has updated."});
-          if (LocalFile.isPaused()) {
-            socket.emit("status", {message : "Resuming..."});
-            LocalFile.unpipe(Parser);
-            LocalFile.resume();
-            LocalFile.pipe(Parser);
-          }
-        }
-        fs.watch(message.path, readMore);
-        LocalFile.on("data", function(chunk){
-          lastByte += chunk.length;
-        });
-        LocalFile.on("end", function(){
-          LocalFile.pause();
-          socket.emit("status", {message : "Got to the end of the file. " + lastByte});
-        });
-        LocalFile.pipe(Parser);
+        LocalFile.pipe(byteCounter).pipe(Parser);
       }
     });
   });

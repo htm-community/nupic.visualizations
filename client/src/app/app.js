@@ -2,25 +2,25 @@ angular.module('app', ['btford.socket-io','ui.bootstrap']);
 
 angular.module('app').factory('socket', ['socketFactory', function(socketFactory){
 
-  var mySocket = socketFactory();
+  var Socket = socketFactory();
 
-  mySocket.on("connect", function(){
+  Socket.on("connect", function(){
     console.log("Connected to server socket.");
   });
 
-  mySocket.on("status", function(status){
+  Socket.on("status", function(status){
     console.log(status.message);
   });
 
-  mySocket.on("errorMessage", function(error) {
+  Socket.on("errorMessage", function(error) {
     console.error(error.message); // TODO: handle different types of errors, and give the user feedback
   });
 
-  mySocket.on("fileRetrievalError", function(error){
+  Socket.on("fileRetrievalError", function(error){
     console.error(error.statusCode, error.statusMessage);
   });
 
-  return mySocket;
+  return Socket;
 
 }]);
 
