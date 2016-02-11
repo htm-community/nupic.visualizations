@@ -56,6 +56,10 @@
         </div>
         <div ng-class="{'col-md-6' : view.optionsVisible, 'col-md-12' : !view.optionsVisible}">
           <h3 class="file-name-label">{{view.loadedFileName}}</h3>
+          <div class="read-controls">
+            <button class="btn btn-default" ng-click="play"><span class="glyphicon glyphicon-play"></span></button>
+            <button class="btn btn-default" ng-click="pause"><span class="glyphicon glyphicon-pause"></span></button>
+          </div>
           <div class="loading" ng-show="view.loading"><span class="loading-spin"></span></div>
           <div class="graph" id="dataContainer"></div>
         </div>

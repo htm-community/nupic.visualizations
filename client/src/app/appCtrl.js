@@ -58,7 +58,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     socket.emit('getLocalFile', {
       path : $scope.view.filePath,
       start : 0,
-      end : stats.size
+      end : stats.size - 100
     });
   });
 

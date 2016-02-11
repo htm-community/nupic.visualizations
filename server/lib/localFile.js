@@ -2,51 +2,71 @@ var parse = require('csv-parse');
 var fs = require('fs');
 var request = require('request');
 var stream = require('stream');
-var byteCounter = new stream.Transform( { objectMode: true } );
+var byteCounter = new stream.Transform({objectMode : true});
 
 module.exports = function(socket) {
 
-  socket.emit("status", {message : "connected"});
-
   var Parser,
-      lastByte = -1,
       fileSize = 0,
-      lastChunkSize = 0,
       lastGoodByte = 0,
-      totalTransforms = 0,
-      totalRows = 0;
+      totalLines = 0,
+      readable = 0,
+      totalRows = 0,
+      sizeOfNewLine = Buffer.byteLength('\n', 'utf8');
 
   byteCounter._transform = function (chunk, encoding, done) {
-    var data = chunk.toString();
+    //chunkTracker += chunk.length;
+    var data = chunk.toString('utf8');
     if (this._lastLineData) {
       data = this._lastLineData + data ;
     }
     var lines = data.split('\n');
     this._lastLineData = lines.splice(lines.length-1,1)[0];
+    var textLines = "";
     lines.forEach(function(line) {
-      lastChunkSize = line.length + 1;
-      this.push(line);
+      totalLines++;
+      lastGoodByte += line.length + sizeOfNewLine; // add back the length of the \n
+      textLines += line + '\n';
     }, this);
+    this.push(textLines);
     done();
   };
 
   byteCounter._flush = function (done) {
     if (this._lastLineData) {
-      this.push(this._lastLineData);
-      lastChunkSize = this._lastLineData + 1;
+      if (fileSize === lastGoodByte + this._lastLineData.length + sizeOfNewLine) { // only push data if it is the end of the file - otherwise it is likely to be a partial.
+        lastGoodByte += this._lastLineData.length + sizeOfNewLine;
+        this.push(this._lastLineData);
+      }
     }
     this._lastLineData = null;
     done();
   };
 
+  byteCounter.on('readable', function(){
+    socket.emit('status', { message : "byteCounter Readable" });
+  });
+
+  byteCounter.on('error', function(err){
+    socket.emit('errorMessage', { message : err.message });
+  });
+
+  byteCounter.on('finish', function(){
+    socket.emit('status', { message : "byteCounter Finish" });
+  });
+
+  byteCounter.on('end', function(){
+    socket.emit('status', { message : "byteCounter End" });
+  });
+
+  byteCounter.on('flush', function(){
+    socket.emit('status', { message : "byteCounter Flush" });
+  });
+
   function makeParser() {
 
-    var firstRowRead = false;
-    var rowLength = 0;
-    var counter = 0;
     var rows = [];
     var start = 0;
-    var end = 0;
 
     // Create the parser
     var parser = parse({
@@ -55,6 +75,7 @@ module.exports = function(socket) {
       skip_empty_lines: true,
       auto_parse: true,
       columns: true
+      //encoding: 'utf-8'
     });
 
     // Catch any error
@@ -62,28 +83,19 @@ module.exports = function(socket) {
       socket.emit('errorMessage', { message : err.message });
     });
 
+    parser.on('flush', function(){
+      socket.emit('status', { message : "Parser flush." });
+    });
+
     parser.on('readable', function(){
+      readable++;
       var row;
-      var length = 0;
-      while(row = parser.read()){
-        counter++;
-        if (!firstRowRead) {
-          rowLength = Object.keys(row).length;
-          firstRowRead = true;
-        }
-        if (Object.keys(row).length === rowLength) {
-          lastGoodByte += lastChunkSize;
-          // TODO: what if the end point comes in the middle of the value of the last field?
-          // We wouldn't know that it has been truncated.
-          if (rows.length < 100) {
-            rows.push(row);
-          } else {
-            sendRows();
-          }
+      while( null !== (row = parser.read()) ) {
+        totalRows++;
+        if (rows.length < 100) {
+          rows.push(row);
         } else {
           sendRows();
-          socket.emit("status", { message : "Row length was not consistent on row " + counter + ". Expected " + rowLength + " got " + Object.keys(row).length + "." });
-          parser.end(); // don't read any more
         }
       }
     });
@@ -91,7 +103,7 @@ module.exports = function(socket) {
     function sendRows() {
       socket.emit("data", {
         fileSize : fileSize,
-        firstGoodByte : start,
+        firstGoodByte : start, // TODO: how to handle starting on a partial line
         lastGoodByte : lastGoodByte,
         rows : rows
       });
@@ -100,14 +112,14 @@ module.exports = function(socket) {
 
     // When we are done, test that the parsed output matched what expected
     parser.on('finish', function(){
-      socket.emit("finish", {message : "Finished."});
+      socket.emit("finish", { message : "Parser finished." });
     });
 
     parser.on('end', function(){
-      socket.emit('status', {message : "End. Total rows: " + counter + "."});
-      socket.emit("status", { message : "Total file length: " + fileSize + ". lastGoodByte: " + lastGoodByte });
-      firstRowRead = false;
-      counter = 0;
+      if (rows.length > 0) {
+        sendRows();
+      }
+      socket.emit("status", { message : "Parser end. File size: " + fileSize + ". Total bytes: " + lastGoodByte + ". Total rows: " + totalRows});
     });
 
     return parser;
@@ -158,8 +170,7 @@ module.exports = function(socket) {
           start : message.start,
           end : message.end
         };
-        LocalFile = fs.createReadStream(message.path, options);
-        LocalFile.pipe(byteCounter).pipe(Parser);
+        fs.createReadStream(message.path, options).pipe(byteCounter).pipe(Parser);
       }
     });
   });
