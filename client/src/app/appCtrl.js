@@ -1,6 +1,6 @@
 // Web UI:
 
-angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'appConfig', 'socket', function($scope, $http, $timeout, appConfig, socket) {
+angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$interval', 'appConfig', 'socket', function($scope, $http, $timeout, $interval, appConfig, socket) {
 
   $scope.view = {
     fieldState: [],
@@ -11,9 +11,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loadedFileName: "",
     errors: [],
     loading: false,
+    playing: false,
     windowing: {
       threshold: appConfig.MAX_FILE_SIZE,
-      size: -1, // changed to WINDOW_SIZE on 'windowing' / large files. //TODO add UI for this?
+      size: appConfig.WINDOW_SIZE, // changed to WINDOW_SIZE on 'windowing' / large files. //TODO add UI for this?
       show: false,
       paused: false,
       aborted: false,
@@ -25,14 +26,33 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loadedFields = [], //=CSV header (parsed)
     backupCSV = [],
     timers = {},
+    intervals = {},
     useIterationsForTimestamp = false,
     iteration = 0,
     resetFieldIdx = -1,
     streamParser = null,
-    firstDataLoaded = false;
+    firstDataLoaded = false,
+    fileSize = 0,
+    firstGoodByte = 0,
+    columns = null,
+    lastGoodByte = 0,
+    timestamps = []; // for testing
 
   // what to do when data is sent from server
   socket.on('data', function(data){
+    console.log("From server: firstGoodByte: ", data.firstGoodByte, "lastGoodByte: ", data.lastGoodByte);
+    // check for duplicate timestamps
+    for (var i = 0; i < data.rows.length; i++) {
+      if (timestamps.indexOf(data.rows[i].timestamp) !== -1) {
+        console.warn("Duplicate timestamp!", data.rows[i].timestamp);
+      } else {
+        timestamps.push(data.rows[i].timestamp);
+      }
+    }
+    fileSize = data.fileSize;
+    firstGoodByte = data.firstGoodByte;
+    lastGoodByte = data.lastGoodByte;
+    columns = data.columns;
     if (!firstDataLoaded) {
       loadedFields = generateFieldMap(data.rows, appConfig.EXCLUDE_FIELDS);
       data.rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
@@ -41,7 +61,42 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     } else {
       loadData(data.rows);
     }
+    if ($scope.view.playing) {
+      timers.play = $timeout(function(){
+        if (lastGoodByte + appConfig.PLAY_INCREMENT < fileSize) {
+          var end = Math.min((lastGoodByte + appConfig.PLAY_INCREMENT),fileSize);
+          console.log("Asking server: start: ", lastGoodByte, "end: ", end);
+          socket.emit('readLocalFile', {
+            path : $scope.view.filePath,
+            start : lastGoodByte,
+            end : end,
+            columns : columns
+          });
+        } else {
+          $timeout.cancel(timers.play);
+          $scope.view.playing = false;
+        }
+      },500);
+    }
   });
+
+  var resetFields = function() {
+    $scope.view.fieldState.length = 0;
+    $scope.view.graph = null;
+    $scope.view.dataField = null;
+    $scope.view.errors.length = 0;
+    $scope.view.loadedFileName = "";
+    useIterationsForTimestamp = false;
+    iteration = 0;
+    loadedCSV.length = 0;
+    loadedFields.length = 0;
+    firstDataLoaded = false;
+    fileSize = 0;
+    firstGoodByte = 0;
+    lastGoodByte = 0;
+    columns = null;
+    timestamps.length = 0;
+  };
 
   /*
   socket.on('finish', function(){
@@ -52,16 +107,16 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       loadData(firstRows);
     }
   });
-  */
+
 
   socket.on('fileStats', function(stats){
     socket.emit('getLocalFile', {
       path : $scope.view.filePath,
       start : 0,
-      end : stats.size - 100
+      end : stats.size
     });
   });
-
+    */
   // the "Show/Hide Options" button
   $scope.toggleOptions = function() {
     $scope.view.optionsVisible = !$scope.view.optionsVisible;
@@ -75,17 +130,33 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   $scope.getFile = function() {
     resetFields();
     $scope.view.loadedFileName = $scope.view.filePath;
-    var config = {
-      params : {
-        "filePath" : $scope.view.filePath
-      }
-    };
     if(isLocal()) {
-      socket.emit('getFileStats', $scope.view.filePath);
+      socket.emit('readLocalFile', {
+        path : $scope.view.filePath,
+        start : 0,
+        end : appConfig.LOCAL_CHUNK_SIZE,
+        columns : columns
+      });
       //socket.emit('getLocalFile', {path : $scope.view.filePath});
     } else if (isRemote()) {
       socket.emit('getRemoteFile', {url : $scope.view.filePath});
     }
+  };
+
+  $scope.play = function() {
+    $scope.view.playing = true;
+    var end = Math.min((lastGoodByte + appConfig.PLAY_INCREMENT),fileSize);
+    socket.emit('readLocalFile', {
+      path : $scope.view.filePath,
+      start : lastGoodByte,
+      end : end,
+      columns : columns
+    });
+  };
+
+  $scope.pause = function() {
+    $scope.view.playing = false;
+    $interval.cancel(intervals.play);
   };
 
   $scope.validPath = function() {
@@ -173,24 +244,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       $scope.$apply();
       firstDataLoaded = true;
     }
-  };
-
-  var resetFields = function() {
-    // reset fields
-    $scope.view.fieldState.length = 0;
-    $scope.view.graph = null;
-    $scope.view.dataField = null;
-    $scope.view.errors.length = 0;
-    $scope.view.loadedFileName = "";
-    //$scope.view.windowing.show = false;
-    //$scope.view.windowing.paused = false;
-    //$scope.view.windowing.aborted = false;
-    useIterationsForTimestamp = false;
-    iteration = 0;
-    loadedCSV.length = 0;
-    loadedFields.length = 0;
-    firstDataLoaded = false;
-    //firstRows.length = 0;
   };
 
   // show errors as "notices" in the UI
@@ -501,6 +554,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   $scope.$on("$destroy", function() {
     angular.forEach(timers, function(timer) {
       $timeout.cancel(timer);
+    });
+    angular.forEach(intervals, function(interval){
+      $interval.cancel(interval);
     });
   });
 

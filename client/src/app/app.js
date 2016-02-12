@@ -13,7 +13,7 @@ angular.module('app').factory('socket', ['socketFactory', function(socketFactory
   });
 
   Socket.on("errorMessage", function(error) {
-    console.error(error.message); // TODO: handle different types of errors, and give the user feedback
+    console.warn(error.message); // TODO: handle different types of errors, and give the user feedback
   });
 
   Socket.on("fileRetrievalError", function(error){
