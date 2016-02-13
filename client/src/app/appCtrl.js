@@ -136,9 +136,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
     if(isLocal()) {
       socket.emit('readLocalFile', {
         path : $scope.view.filePath,
-        byteLimit : 10000,
-        start : 0,
-        end : appConfig.LOCAL_CHUNK_SIZE,
+        byteLimit : appConfig.FIRST_VIEW_SIZE,
         columns : columns
       });
       //socket.emit('getLocalFile', {path : $scope.view.filePath});

@@ -10,17 +10,17 @@ module.exports = function(socket) {
       columns = true,       // this can be either true, or a string array. If it is an array, it will be the names of the columns
       fileSize = 0,         // the full size of the current file. This may change if the file is being actively updated.
       localFilePath = "",   // path to the file
-      byteLimit = 64000,      // max number of rows to read before pausing the stream
-      byteCount = 0,
-      Reader = null;      // the currently open stream
+      byteLimit = 64000,    // max number of rows to read before pausing the stream
+      byteCount = 0,        // number of bytes streamed so far
+      Reader = null,        // the currently open file stream
+      ByteCounter = null,   // a transform stream which processes the file stream and feed the csv-parser
+      Parser = null;        // the csv-parser transform stream
 
   // global function for sending data back to the client
   function sendRows(rows) {
     columns = Object.keys(rows[0]);
     socket.emit("data", {
       fileSize : fileSize,
-      //firstGoodByte : firstGoodByte, // TODO: how to handle starting on a partial line
-      //lastGoodByte : lastGoodByte,
       rows : rows,
       columns : columns
     });
@@ -76,31 +76,38 @@ module.exports = function(socket) {
   // position in the file, we will most likely be choosing a position somewhere in
   // the middle of a line. So, we want to save the position of the last line so when
   // we ask for more data, we can read from that point.
-  var byteCounter = new stream.Transform({objectMode : true});
 
-  byteCounter._transform = function (chunk, encoding, done) {
-    var data = chunk.toString('utf8');
-    if (this._lastLineData) {
-      data = this._lastLineData + data ;
-    }
-    var lines = data.split('\n');
-    this._lastLineData = lines.splice(lines.length-1,1)[0];
-    var textLines = "";
-    lines.forEach(function(line) {
-      textLines += line + '\n';
-    }, this);
-    this.push(textLines);
-    done();
-  };
+  function makeByteCounter() {
 
-  byteCounter._flush = function (done) {
-    socket.emit('status', {message : "byteCounter._flush"});
-    done();
-  };
+    var byteCounter = new stream.Transform({objectMode : true});
 
-  byteCounter.on('error', function(err){
-    socket.emit('errorMessage', { message : "byteCounter error: " + err.message });
-  });
+    byteCounter._transform = function (chunk, encoding, done) {
+      var data = chunk.toString('utf8');
+      if (this._lastLineData) {
+        data = this._lastLineData + data ;
+      }
+      var lines = data.split('\n');
+      this._lastLineData = lines.splice(lines.length-1,1)[0];
+      var textLines = "";
+      lines.forEach(function(line) {
+        textLines += line + '\n';
+      }, this);
+      this.push(textLines);
+      done();
+    };
+
+    byteCounter._flush = function (done) {
+      socket.emit('status', {message : "ByteCounter._flush"});
+      done();
+    };
+
+    byteCounter.on('error', function(err){
+      socket.emit('errorMessage', { message : "ByteCounter error: " + err.message });
+    });
+
+    return byteCounter;
+
+  }
 
 
   socket.on('playLocalFile', function(message){
@@ -120,6 +127,15 @@ module.exports = function(socket) {
 
   // handle local files
   socket.on('readLocalFile', function(message) {
+    if (Reader && ByteCounter) {
+      Reader.unpipe(ByteCounter);
+    }
+    if (ByteCounter && Parser) {
+      ByteCounter.unpipe(Parser);
+    }
+    if (playTimer) {
+      clearInterval(playTimer);
+    }
     localFilePath = message.path;
     byteLimit = message.byteLimit;
     byteCount = 0;
@@ -133,7 +149,8 @@ module.exports = function(socket) {
         });
       } else {
         fileSize = stats.size;
-        var Parser = makeParser(columns);
+        Parser = makeParser(columns);
+        ByteCounter = makeByteCounter();
         fs.access(localFilePath, fs.R_OK, function (err) {
           if (err) {
             var messageText;
@@ -153,21 +170,31 @@ module.exports = function(socket) {
               statusMessage : messageText
             });
           } else {
-            // read file
-            Reader = fs.createReadStream(localFilePath, {objectMode : true});
+            // read the file
 
+            // Reader : Readable
+            // ByteCounter : Transform
+            // Parser : Transform
+
+            Reader = fs.createReadStream(localFilePath, {objectMode : true});
+            Reader.pause();
             Reader.on('error', function(err){
               socket.emit('errorMessage', {message : "File reader error: " + err.message});
             });
-
             Reader.on('data', function(chunk) {
               byteCount += chunk.length;
+              socket.emit('status', {message : "byteCount: " + byteCount + ". byteLimit: " + byteLimit + "."});
               if (byteCount > byteLimit) {
                 Reader.pause();
               }
             });
-
-            Reader.pipe(byteCounter).pipe(Parser);
+            Reader.on('end', function(){
+              if (playTimer) {
+                clearInterval(playTimer);
+              }
+            });
+            Reader.pipe(ByteCounter).pipe(Parser);
+            Reader.resume();
           }
         });
       }

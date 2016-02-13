@@ -40,5 +40,7 @@ angular.module('app').constant('appConfig', {
   // HIGHLIGHT_RADIUS:
   // radius of threshold highlight from point in time that reaches the threshold.
   // modifies (together with color/opacity) how visible the highlight is.
-  HIGHLIGHT_RADIUS : 10
+  HIGHLIGHT_RADIUS : 10,
+
+  FIRST_VIEW_SIZE : 500000
 });
