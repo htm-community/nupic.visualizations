@@ -53,7 +53,7 @@ angular.module('app').constant('appConfig', {
   // buffer size (in rows/items) used for DyGraph streaming, default 10000
   // each batch existing values are dropped, new WINDOW_SIZE is painted. Graph will "move to the right".
   // -1 : data never dropped, just append. Graph will "shrink".
-  WINDOW_SIZE : 1000,
+  WINDOW_SIZE : 5000,
   // MAX_FILE_SIZE:
   // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur. (default 60MB)
   // -1 to disable the functionality (can cause performance problems on large files/online monitoring)
@@ -67,9 +67,7 @@ angular.module('app').constant('appConfig', {
   // HIGHLIGHT_RADIUS:
   // radius of threshold highlight from point in time that reaches the threshold.
   // modifies (together with color/opacity) how visible the highlight is.
-  HIGHLIGHT_RADIUS : 10,
-
-  PLAY_INCREMENT : 5000
+  HIGHLIGHT_RADIUS : 10
 });
 
 // Web UI:
@@ -114,8 +112,9 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
 
   // what to do when data is sent from server
   socket.on('data', function(data){
-    console.log("From server: firstGoodByte: ", data.firstGoodByte, "lastGoodByte: ", data.lastGoodByte);
+    //console.log("From server: firstGoodByte: ", data.firstGoodByte, "lastGoodByte: ", data.lastGoodByte);
     // check for duplicate timestamps
+    /*
     for (var i = 0; i < data.rows.length; i++) {
       if (timestamps.indexOf(data.rows[i].timestamp) !== -1) {
         console.warn("Duplicate timestamp!", data.rows[i].timestamp);
@@ -123,9 +122,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
         timestamps.push(data.rows[i].timestamp);
       }
     }
+    */
     fileSize = data.fileSize;
-    firstGoodByte = data.firstGoodByte;
-    lastGoodByte = data.lastGoodByte;
+    //firstGoodByte = data.firstGoodByte;
+    //lastGoodByte = data.lastGoodByte;
     columns = data.columns;
     if (!firstDataLoaded) {
       loadedFields = generateFieldMap(data.rows, appConfig.EXCLUDE_FIELDS);
@@ -135,6 +135,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
     } else {
       loadData(data.rows);
     }
+    /*
     if ($scope.view.playing) {
       timers.play = $timeout(function(){
         if (lastGoodByte + appConfig.PLAY_INCREMENT < fileSize) {
@@ -151,7 +152,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
           $scope.view.playing = false;
         }
       },500);
-    }
+    }*/
   });
 
   var resetFields = function() {
@@ -207,6 +208,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
     if(isLocal()) {
       socket.emit('readLocalFile', {
         path : $scope.view.filePath,
+        byteLimit : 10000,
         start : 0,
         end : appConfig.LOCAL_CHUNK_SIZE,
         columns : columns
@@ -219,18 +221,16 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
 
   $scope.play = function() {
     $scope.view.playing = true;
-    var end = Math.min((lastGoodByte + appConfig.PLAY_INCREMENT),fileSize);
-    socket.emit('readLocalFile', {
+    //var end = Math.min((lastGoodByte + appConfig.PLAY_INCREMENT),fileSize);
+    socket.emit('playLocalFile', {
       path : $scope.view.filePath,
-      start : lastGoodByte,
-      end : end,
-      columns : columns
+      speed : appConfig.PLAY_SPEED
     });
   };
 
   $scope.pause = function() {
     $scope.view.playing = false;
-    $interval.cancel(intervals.play);
+    socket.emit('pauseLocalFile');
   };
 
   $scope.validPath = function() {

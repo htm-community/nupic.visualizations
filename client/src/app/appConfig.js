@@ -26,7 +26,7 @@ angular.module('app').constant('appConfig', {
   // buffer size (in rows/items) used for DyGraph streaming, default 10000
   // each batch existing values are dropped, new WINDOW_SIZE is painted. Graph will "move to the right".
   // -1 : data never dropped, just append. Graph will "shrink".
-  WINDOW_SIZE : 1000,
+  WINDOW_SIZE : 5000,
   // MAX_FILE_SIZE:
   // Maximum size in bytes, for a file. Over this size, and windowing will automatically occur. (default 60MB)
   // -1 to disable the functionality (can cause performance problems on large files/online monitoring)
@@ -40,7 +40,5 @@ angular.module('app').constant('appConfig', {
   // HIGHLIGHT_RADIUS:
   // radius of threshold highlight from point in time that reaches the threshold.
   // modifies (together with color/opacity) how visible the highlight is.
-  HIGHLIGHT_RADIUS : 10,
-
-  PLAY_INCREMENT : 5000
+  HIGHLIGHT_RADIUS : 10
 });
