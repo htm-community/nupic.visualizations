@@ -14,7 +14,9 @@ module.exports = function(socket) {
       byteCount = 0,        // number of bytes streamed so far
       Reader = null,        // the currently open file stream
       ByteCounter = null,   // a transform stream which processes the file stream and feed the csv-parser
-      Parser = null;        // the csv-parser transform stream
+      Parser = null,        // the csv-parser transform stream
+      endOfFile = false,    // has the reader reached the end of the file yet?
+      lastFileSize = 0;
 
   // global function for sending data back to the client
   function sendRows(rows) {
@@ -65,7 +67,7 @@ module.exports = function(socket) {
         sendRows(rows);
       }
       socket.emit('status', { message : "Parser end. File size: " + fileSize });
-     // Reader.pause();
+      Reader.pause();
     });
 
     return parser;
@@ -116,7 +118,34 @@ module.exports = function(socket) {
       return;
     }
     playTimer = setInterval(function(){
-      Reader.resume();
+      // check to see if file is at the end, and the file size is less than the original file size
+      if (!endOfFile) {
+        socket.emit('status', {message : "reading next chunk"});
+        Reader.resume();
+      } else {
+        socket.emit('status', {message : "checking file size..."});
+        fs.stat(localFilePath, function(err, stats){
+          if(err) {
+            socket.emit("fileRetrievalError", {
+              statusCode : response.statusCode,
+              statusMessage : response.statusMessage
+            });
+          } else {
+            if (stats.size !== fileSize) {
+              socket.emit('status', {message : "file has grown! reading more..."});
+              fileSize = stats.size;
+              readFile({
+                path : localFilePath,
+                byteLimit : byteLimit,
+                columns : columns,
+                start : lastFileSize
+              });
+            } else {
+              socket.emit('status', {message : "file has not grown"});
+            }
+          }
+        });
+      }
     },500);
   });
 
@@ -125,8 +154,10 @@ module.exports = function(socket) {
     Reader.pause();
   });
 
+  socket.on('readLocalFile', readFile);
+
   // handle local files
-  socket.on('readLocalFile', function(message) {
+  function readFile(message) {
     if (Reader && ByteCounter) {
       Reader.unpipe(ByteCounter);
     }
@@ -134,7 +165,7 @@ module.exports = function(socket) {
       ByteCounter.unpipe(Parser);
     }
     if (playTimer) {
-      clearInterval(playTimer);
+     // clearInterval(playTimer);
     }
     localFilePath = message.path;
     byteLimit = message.byteLimit;
@@ -175,8 +206,8 @@ module.exports = function(socket) {
             // Reader : Readable
             // ByteCounter : Transform
             // Parser : Transform
-
-            Reader = fs.createReadStream(localFilePath, {objectMode : true});
+            var start = message.start || 0;
+            Reader = fs.createReadStream(localFilePath, {objectMode : true, start : start});
             Reader.pause();
             Reader.on('error', function(err){
               socket.emit('errorMessage', {message : "File reader error: " + err.message});
@@ -185,13 +216,18 @@ module.exports = function(socket) {
               byteCount += chunk.length;
               socket.emit('status', {message : "byteCount: " + byteCount + ". byteLimit: " + byteLimit + "."});
               if (byteCount > byteLimit) {
-                Reader.pause();
+                endOfFile = true;
               }
             });
             Reader.on('end', function(){
+              socket.emit('status', {message : "end of file"});
+              endOfFile = true;
+              lastFileSize = fileSize;
+              //Reader.pause();
+              /*
               if (playTimer) {
                 clearInterval(playTimer);
-              }
+              }*/
             });
             Reader.pipe(ByteCounter).pipe(Parser);
             Reader.resume();
@@ -199,7 +235,7 @@ module.exports = function(socket) {
         });
       }
     });
-  });
+  }
 
   socket.on('getRemoteFile', function(message) {
     var Parser = parserFactory();
