@@ -9,7 +9,7 @@
     <script type="text/javascript" src="/static/app.js"></script>
     <link rel="stylesheet" type="text/css" href="/static/stylesheet.css"/>
     <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon" />
-    <title>NuPIC Visualization</title>
+    <title>CSV Visualization</title>
     <base href="/app/">
   </head>
   <body ng-controller="appCtrl">
@@ -17,29 +17,28 @@
       <div class="viz-header">
 
         <div class="row">
-          <div class="col-md-6">
-            <div class="row">
-              <div class="col-md-12 title">
-                <img src="/static/numenta_black.svg" alt="Numenta logo"><h1>NuPIC Visualization</h1>
-              </div>
-            </div>
-            <p>Enter a path to a local CSV file.</p>
-            <div class="form-inline">
-              <div class="form-group">
-                <div class="input-group">
-                  <input type="text" class="form-control file-name" ng-model="view.filePath">
-                </div>
-                <button class="btn btn-primary" type="button" ng-disabled="!validPath()" ng-click="getFile()">Get file &hellip;</button>
-                <div class="errors">
-                  <div ng-repeat="error in view.errors track by $index" class="alert alert-{{error.type}} alert-dismissible" role="alert">
-                    <button type="button" class="close" aria-label="Close" ng-click="clearError($index)"><span aria-hidden="true">&times;</span></button>
-                    {{error.message}}
+          <div class="col-md-4 title">
+            <img src="/static/numenta_black.svg" alt="Numenta logo"><h1>CSV Visualization</h1>
+          </div>
+          <div class="col-md-8 input-form">
+
+            <form>
+              <div class="form-inline">
+                <div class="form-group">
+                  <input type="text" class="form-control file-name" ng-model="view.filePath" placeholder="Enter a path to a local CSV file.">
+                  <button class="btn btn-primary" type="button" ng-disabled="!validPath()" ng-click="getFile()">Get file &hellip;</button>
+                  <div class="errors">
+                    <div ng-repeat="error in view.errors track by $index" class="alert alert-{{error.type}} alert-dismissible" role="alert">
+                      <button type="button" class="close" aria-label="Close" ng-click="clearError($index)"><span aria-hidden="true">&times;</span></button>
+                      {{error.message}}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </form>
           </div>
-          <div class="col-md-6 usage" ng-show="view.graph">
+          <!--
+          <div class="col-md-6 usage" ng-show="false">
             <h3>Graph Usage</h3>
             <ul>
               <li>Zoom in: use mouse to select desired range for zoom in the graph.</li>
@@ -48,6 +47,7 @@
               <li>To normalize/rescale some values, select a reference field in Data and then desired field(s) in Normalize.</li>
             </ul>
           </div>
+          -->
         </div>
       </div>
       <div class="row graphs">
@@ -55,11 +55,13 @@
           <button class="btn btn-default btn-sm pull-right options-toggle" ng-click="toggleOptions()"><span class="glyphicon glyphicon-triangle-left" ng-show="view.optionsVisible"></span> <span ng-hide="view.optionsVisible">Show</span><span ng-show="view.optionsVisible">Hide</span> Options <span class="glyphicon glyphicon-triangle-right" ng-show="!view.optionsVisible"></span></button>
         </div>
         <div ng-class="{'col-md-6' : view.optionsVisible, 'col-md-12' : !view.optionsVisible}">
-          <h3 class="file-name-label">{{view.loadedFileName}}</h3>
-          <div class="read-controls">
-            <button class="btn btn-default" ng-hide="view.playing" ng-click="play()"><span class="glyphicon glyphicon-play"></span></button>
-            <button class="btn btn-default" ng-hide="!view.playing" ng-click="pause()"><span class="glyphicon glyphicon-pause"></span></button>
-          </div>
+          <h3 class="file-name-label">
+            <span class="read-controls" ng-show="view.graph">
+              <button class="btn btn-default" ng-hide="view.playing" ng-click="play()"><span class="glyphicon glyphicon-play"></span></button>
+              <button class="btn btn-default" ng-hide="!view.playing" ng-click="pause()"><span class="glyphicon glyphicon-pause"></span></button>
+            </span>
+            {{view.loadedFileName}}
+          </h3>
           <div class="loading" ng-show="view.loading"><span class="loading-spin"></span></div>
           <div class="graph" id="dataContainer"></div>
         </div>

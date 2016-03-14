@@ -2,7 +2,7 @@ angular.module('app', ['btford.socket-io','ui.bootstrap','toastr','ngAnimate']);
 
 angular.module('app').config(['toastrConfig', function(toastrConfig) {
   angular.extend(toastrConfig, {
-    positionClass: 'toast-top-center',
+    positionClass: 'toast-top-full-width',
     preventOpenDuplicates: true,
   });
 }]);
