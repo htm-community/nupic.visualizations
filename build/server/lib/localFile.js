@@ -120,19 +120,19 @@ module.exports = function(socket) {
     playTimer = setInterval(function(){
       // check to see if file is at the end, and the file size is less than the original file size
       if (!endOfFile) {
-        socket.emit('status', {message : "reading next chunk"});
+        //socket.emit('status', {message : "reading next chunk"});
         Reader.resume();
       } else {
-        socket.emit('status', {message : "checking file size..."});
+        //socket.emit('status', {message : "checking file size..."});
         fs.stat(localFilePath, function(err, stats){
           if(err) {
             socket.emit("fileRetrievalError", {
-              statusCode : response.statusCode,
-              statusMessage : response.statusMessage
+              statusCode : err.errno,
+              statusMessage : "Not found"
             });
           } else {
             if (stats.size !== fileSize) {
-              socket.emit('status', {message : "file has grown! reading more..."});
+              //socket.emit('status', {message : "file has grown! reading more..."});
               fileSize = stats.size;
               readFile({
                 path : localFilePath,
@@ -141,7 +141,7 @@ module.exports = function(socket) {
                 start : lastFileSize
               });
             } else {
-              socket.emit('status', {message : "file has not grown"});
+              //socket.emit('status', {message : "file has not grown"});
             }
           }
         });
@@ -172,8 +172,8 @@ module.exports = function(socket) {
     fs.stat(localFilePath, function(err, stats){
       if(err) {
         socket.emit("fileRetrievalError", {
-          statusCode : response.statusCode,
-          statusMessage : response.statusMessage
+          statusCode : err.errno,
+          statusMessage : "Not found"
         });
       } else {
         fileSize = stats.size;
@@ -211,7 +211,7 @@ module.exports = function(socket) {
             });
             Reader.on('data', function(chunk) {
               byteCount += chunk.length;
-              socket.emit('status', {message : "byteCount: " + byteCount + ". byteLimit: " + byteLimit + "."});
+              //socket.emit('status', {message : "byteCount: " + byteCount + ". byteLimit: " + byteLimit + "."});
               if (byteCount > byteLimit) {
                 endOfFile = true;
               }

@@ -7,7 +7,7 @@ angular.module('app').config(['toastrConfig', function(toastrConfig) {
   });
 }]);
 
-angular.module('app').factory('socket', ['socketFactory', function(socketFactory){
+angular.module('app').factory('socket', ['socketFactory', 'toastr', function(socketFactory, toastr){
 
   var Socket = socketFactory();
 
@@ -20,11 +20,13 @@ angular.module('app').factory('socket', ['socketFactory', function(socketFactory
   });
 
   Socket.on("errorMessage", function(error) {
-    console.warn(error.message); // TODO: handle different types of errors, and give the user feedback
+    toastr.error(error.statusMessage);
+    //console.warn(error.message); // TODO: handle different types of errors, and give the user feedback
   });
 
   Socket.on("fileRetrievalError", function(error){
-    console.error(error.statusCode, error.statusMessage);
+    toastr.error(error.statusMessage);
+    //console.error(error.statusCode, error.statusMessage);
   });
 
   return Socket;
