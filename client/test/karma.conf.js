@@ -20,6 +20,8 @@ module.exports = function(config){
     'client/bower_components/angular-bootstrap/ui-bootstrap-tpls.js',
     'client/bower_components/moment/moment.js',
     'client/bower_components/dygraphs/dygraph-combined.js',
+    'client/bower_components/angular-toastr/dist/angular-toastr.tpls.js',
+    'client/bower_components/angular-animate/angular-animate.js',
     'client/src/**/*.js',
     'client/test/unit/**/*.spec.js'
   ],

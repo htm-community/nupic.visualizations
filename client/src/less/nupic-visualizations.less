@@ -241,3 +241,18 @@ input.file-name {
     transform: rotate(360deg);
   }
 }
+
+// angular-toastr overrides
+
+body #toast-container > div {
+  -moz-box-shadow: 0 0 12px rgba(0,0,0,0.35);
+  -webkit-box-shadow: 0 0 12px rgba(0,0,0,0.35);
+  box-shadow: 0 0 12px rgba(0,0,0,0.35);
+}
+body #toast-container > :hover {
+  -moz-box-shadow: 0 0 12px rgba(0,0,0,0.75);
+  -webkit-box-shadow: 0 0 12px rgba(0,0,0,0.75);
+  box-shadow: 0 0 12px rgba(0,0,0,0.75);
+  opacity: 1;
+  cursor: pointer;
+}

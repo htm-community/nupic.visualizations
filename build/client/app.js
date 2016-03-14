@@ -1,4 +1,11 @@
-angular.module('app', ['btford.socket-io','ui.bootstrap']);
+angular.module('app', ['btford.socket-io','ui.bootstrap','toastr','ngAnimate']);
+
+angular.module('app').config(['toastrConfig', function(toastrConfig) {
+  angular.extend(toastrConfig, {
+    positionClass: 'toast-top-center',
+    preventOpenDuplicates: true,
+  });
+}]);
 
 angular.module('app').factory('socket', ['socketFactory', function(socketFactory){
 
@@ -74,7 +81,7 @@ angular.module('app').constant('appConfig', {
 
 // Web UI:
 
-angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$interval', 'appConfig', 'socket', function($scope, $http, $timeout, $interval, appConfig, socket) {
+angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$interval', 'appConfig', 'socket', 'toastr', function($scope, $http, $timeout, $interval, appConfig, socket, toastr) {
 
   $scope.view = {
     fieldState: [],
@@ -206,7 +213,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
 
   $scope.getFile = function() {
     resetFields();
-    $scope.view.loadedFileName = $scope.view.filePath;
     if(isLocal()) {
       socket.emit('readLocalFile', {
         path : $scope.view.filePath,
@@ -217,6 +223,12 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
     } else if (isRemote()) {
       socket.emit('getRemoteFile', {url : $scope.view.filePath});
     }
+    setFileTitle();
+  };
+
+  var setFileTitle = function() {
+    var parts = $scope.view.filePath.split('/');
+    $scope.view.loadedFileName = parts[parts.length - 1];
   };
 
   $scope.play = function() {
@@ -321,7 +333,21 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
   };
 
   // show errors as "notices" in the UI
-  var handleError = function(error, type, showOnce) {
+  var handleError = function(message, type, showOnce) {
+    switch (type) {
+      case "info" :
+        toastr.info(message);
+        break;
+      case "warning" :
+        toastr.warning(message);
+        break;
+      case "danger" :
+        toastr.error(message);
+        break;
+      default :
+        toastr.info(message);
+    }
+    /*
     showOnce = typeof showOnce !== 'undefined' ? showOnce : false;
     exists = false;
     if (showOnce) {
@@ -338,6 +364,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
       "type": type
     });
     $scope.$apply();
+    */
   };
 
   $scope.clearErrors = function() {
@@ -713,69 +740,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
       }
     }
   };
-
-  /*
-  // highlight areas where a select function value crosses a threshold
-  // used in dygraph's underlayCallback
-  function highlightAnomaly(canvas, area, g) {
-
-    var timeIdx = loadedFields.indexOf(appConfig.TIMESTAMP);
-
-    // draw rectangle on x0..x1
-    function highlight_period(x_start, x_end, color) {
-      var canvas_left_x = g.toDomXCoord(x_start);
-      var canvas_right_x = g.toDomXCoord(x_end);
-      var canvas_width = canvas_right_x - canvas_left_x;
-      canvas.fillStyle = color;
-      canvas.fillRect(canvas_left_x, area.y, canvas_width, area.h);
-    }
-
-    // find x values matching condition on y-value
-    // params: data (all fields), watchedFieldName (string), threshold (for condition >thr)
-    // return array with indices of anomalies
-    function find_where(data, watchedFieldName, threshold) {
-      var results = [];
-      var fnIdx = loadedFields.indexOf(watchedFieldName);
-      if (fnIdx === -1) {
-        handleError("Highlighting cannot work, field " + watchedFieldName + " not found!", "danger", true);
-        return [];
-      }
-      for (var i = 0; i < data.length; i++) {
-        var value = data[i][fnIdx];
-        // the condition is here
-        if (value >= threshold) {
-          var time = data[i][timeIdx];
-          //console.log("Found anomaly at "+time+" with value "+value);
-          results.push(time);
-        }
-      }
-      return results;
-    } //end find_where
-
-    //highlight_period(2, 5, yellow); //test
-    // find relevant points
-    for (var i = 0; i < $scope.view.fieldState.length; i++) {
-      var selected, modDt, color, field;
-      field = $scope.view.fieldState[i];
-      if (field.highlighted === true && field.highlightThreshold !== null) {
-        selected = find_where(backupCSV, field.name, field.highlightThreshold);
-        // compute optimal/visible high. radius as 1% of screen area
-        modDt = 0.01 * loadedCSV.length;
-        // plot all of them
-        var transparency = 0.4; // min/max opacity for overlapping highs
-        color = field.color.replace("rgb", "rgba").replace(")", "," + transparency + ")");
-        var lastHigh = -1;
-        for (var x = 0; x < selected.length; x++) {
-          if(selected[x] - modDt >= lastHigh) {
-            highlight_period(selected[x] - modDt, selected[x] + modDt, color);
-            lastHigh = selected[x] + modDt;
-          }
-        }
-      }
-    }
-
-  } // end highlightAnomaly callback
-  */
 
 }]);
 

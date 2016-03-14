@@ -1,4 +1,11 @@
-angular.module('app', ['btford.socket-io','ui.bootstrap']);
+angular.module('app', ['btford.socket-io','ui.bootstrap','toastr','ngAnimate']);
+
+angular.module('app').config(['toastrConfig', function(toastrConfig) {
+  angular.extend(toastrConfig, {
+    positionClass: 'toast-top-center',
+    preventOpenDuplicates: true,
+  });
+}]);
 
 angular.module('app').factory('socket', ['socketFactory', function(socketFactory){
 

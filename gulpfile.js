@@ -26,6 +26,8 @@ var externalJS = [
   "client/bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js",
   "client/bower_components/dygraphs/dygraph-combined.js",
   "client/bower_components/moment/min/moment.min.js",
+  "client/bower_components/angular-toastr/dist/angular-toastr.tpls.min.js",
+  "client/bower_components/angular-animate/angular-animate.min.js",
   "node_modules/socket.io-stream/socket.io-stream.js"
 ];
 

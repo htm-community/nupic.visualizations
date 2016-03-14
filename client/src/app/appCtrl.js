@@ -1,6 +1,6 @@
 // Web UI:
 
-angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$interval', 'appConfig', 'socket', function($scope, $http, $timeout, $interval, appConfig, socket) {
+angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$interval', 'appConfig', 'socket', 'toastr', function($scope, $http, $timeout, $interval, appConfig, socket, toastr) {
 
   $scope.view = {
     fieldState: [],
@@ -132,7 +132,6 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
 
   $scope.getFile = function() {
     resetFields();
-    $scope.view.loadedFileName = $scope.view.filePath;
     if(isLocal()) {
       socket.emit('readLocalFile', {
         path : $scope.view.filePath,
@@ -143,6 +142,12 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
     } else if (isRemote()) {
       socket.emit('getRemoteFile', {url : $scope.view.filePath});
     }
+    setFileTitle();
+  };
+
+  var setFileTitle = function() {
+    var parts = $scope.view.filePath.split('/');
+    $scope.view.loadedFileName = parts[parts.length - 1];
   };
 
   $scope.play = function() {
@@ -247,7 +252,21 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
   };
 
   // show errors as "notices" in the UI
-  var handleError = function(error, type, showOnce) {
+  var handleError = function(message, type, showOnce) {
+    switch (type) {
+      case "info" :
+        toastr.info(message);
+        break;
+      case "warning" :
+        toastr.warning(message);
+        break;
+      case "danger" :
+        toastr.error(message);
+        break;
+      default :
+        toastr.info(message);
+    }
+    /*
     showOnce = typeof showOnce !== 'undefined' ? showOnce : false;
     exists = false;
     if (showOnce) {
@@ -264,6 +283,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
       "type": type
     });
     $scope.$apply();
+    */
   };
 
   $scope.clearErrors = function() {
