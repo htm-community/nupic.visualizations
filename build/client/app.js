@@ -634,7 +634,87 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
     });
   });
 
+  var highlightAnomaly = function(canvas, area, g) {
+    /* draws a line for the threshold
+    canvas.fillStyle = "#C4F605";
+    var thresh = g.toDomYCoord(CONFIG.ANOMALY_THRESHOLD,1);
+    canvas.fillRect(area.x, thresh, area.w, 1);
+    */
 
+    var timeIdx = 0;
+
+    // draw rectangle on x0..x1
+    function highlight_period(x_start, x_end, color) {
+      var width = x_end - x_start;
+      canvas.fillStyle = color;
+      canvas.fillRect(x_start, area.y, width, area.h);
+    }
+
+    for (var i = 0; i < $scope.view.fieldState.length; i++) {
+      var start,
+        end,
+        first,
+        last,
+        color,
+        field,
+        fieldIndex,
+        threshold,
+        transparency,
+        previousIndex;
+
+      if ($scope.view.fieldState[i].highlighted === true && $scope.view.fieldState[i].highlightThreshold !== null) {
+        field = $scope.view.fieldState[i];
+        fieldIndex = loadedFields.indexOf(field.name);
+        if (fieldIndex < 0) {
+          return;
+        }
+        color = field.color.replace("rgb", "rgba").replace(")", ",0.5)");
+        start = null;
+        end = null;
+        last = null;
+        first = null;
+        for (var t = 0; t < loadedCSV.length; t++) {
+          if (loadedCSV[t][fieldIndex] >= field.highlightThreshold && start === null) {
+            start = g.toDomXCoord(loadedCSV[t][0]);
+            first = t;
+          }
+          if (loadedCSV[t][fieldIndex] >= field.highlightThreshold) {
+            last = t;
+          }
+          if (start !== null && (loadedCSV[t][fieldIndex] < field.highlightThreshold || t >= loadedCSV.length - 1)) {
+            // get leading slope
+            if (t === last) {
+              end = g.toDomXCoord(loadedCSV[last][0]);
+            } else {
+              var x1 = g.toDomXCoord(loadedCSV[t][0]) - g.toDomXCoord(loadedCSV[last][0]);
+              var y1 = loadedCSV[last][fieldIndex] - loadedCSV[t][fieldIndex];
+              var z = Math.atan(x1 / y1);
+              var y2 = loadedCSV[last][fieldIndex] - field.highlightThreshold;
+              var x2 = y2 * Math.tan(z);
+              end = g.toDomXCoord(loadedCSV[last][0]) + x2;
+            }
+            // get trailing slope
+            previousIndex = first - 1;
+            if (previousIndex >= 0) {
+              var x3 = start - g.toDomXCoord(loadedCSV[previousIndex][0]);
+              var y3 = loadedCSV[first][fieldIndex] - loadedCSV[previousIndex][fieldIndex];
+              var z2 = Math.atan(x3 / y3);
+              var y4 = loadedCSV[first][fieldIndex] - field.highlightThreshold;
+              var x4 = y4 * Math.tan(z2);
+              start = start - x4;
+            }
+            highlight_period(start, end, color);
+            start = null;
+            end = null;
+            last = null;
+            first = null;
+          }
+        }
+      }
+    }
+  };
+
+  /*
   // highlight areas where a select function value crosses a threshold
   // used in dygraph's underlayCallback
   function highlightAnomaly(canvas, area, g) {
@@ -695,6 +775,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$in
     }
 
   } // end highlightAnomaly callback
+  */
 
 }]);
 

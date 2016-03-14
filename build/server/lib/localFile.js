@@ -164,9 +164,6 @@ module.exports = function(socket) {
     if (ByteCounter && Parser) {
       ByteCounter.unpipe(Parser);
     }
-    if (playTimer) {
-     // clearInterval(playTimer);
-    }
     localFilePath = message.path;
     byteLimit = message.byteLimit;
     byteCount = 0;
@@ -223,11 +220,6 @@ module.exports = function(socket) {
               socket.emit('status', {message : "end of file"});
               endOfFile = true;
               lastFileSize = fileSize;
-              //Reader.pause();
-              /*
-              if (playTimer) {
-                clearInterval(playTimer);
-              }*/
             });
             Reader.pipe(ByteCounter).pipe(Parser);
             Reader.resume();
