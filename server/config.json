@@ -1,0 +1,11 @@
+{
+  "robots": "User-agent: *\nDisallow: ",
+  "listenPort" : 5000,
+  "staticUrl" : "/static",
+  "expressLogFile" : "./express.log",
+  "appPath" : "/app",
+  "localPath" : "/local",
+  "remotePath" : "/remote",
+  "allowLocalFileAccess" : true,
+  "excludeFields" : []
+}

@@ -1,6 +1,6 @@
 // Web UI:
 
-angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'appConfig', function($scope, $http, $timeout, appConfig) {
+angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', '$interval', 'appConfig', 'socket', 'toastr', function($scope, $http, $timeout, $interval, appConfig, socket, toastr) {
 
   $scope.view = {
     fieldState: [],
@@ -11,9 +11,10 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loadedFileName: "",
     errors: [],
     loading: false,
+    playing: false,
     windowing: {
       threshold: appConfig.MAX_FILE_SIZE,
-      size: -1, // changed to WINDOW_SIZE on 'windowing' / large files. //TODO add UI for this?
+      size: appConfig.WINDOW_SIZE, // changed to WINDOW_SIZE on 'windowing' / large files. //TODO add UI for this?
       show: false,
       paused: false,
       aborted: false,
@@ -25,13 +26,100 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     loadedFields = [], //=CSV header (parsed)
     backupCSV = [],
     timers = {},
+    intervals = {},
     useIterationsForTimestamp = false,
     iteration = 0,
     resetFieldIdx = -1,
     streamParser = null,
+    firstDataLoaded = false,
+    fileSize = 0,
+    firstGoodByte = 0,
+    columns = null,
+    lastGoodByte = 0,
+    timestamps = []; // for testing
+
+  // what to do when data is sent from server
+  socket.on('data', function(data){
+    //console.log("From server: firstGoodByte: ", data.firstGoodByte, "lastGoodByte: ", data.lastGoodByte);
+    // check for duplicate timestamps
+    /*
+    for (var i = 0; i < data.rows.length; i++) {
+      if (timestamps.indexOf(data.rows[i].timestamp) !== -1) {
+        console.warn("Duplicate timestamp!", data.rows[i].timestamp);
+      } else {
+        timestamps.push(data.rows[i].timestamp);
+      }
+    }
+    */
+    fileSize = data.fileSize;
+    //firstGoodByte = data.firstGoodByte;
+    //lastGoodByte = data.lastGoodByte;
+    columns = data.columns;
+    if (!firstDataLoaded) {
+      loadedFields = generateFieldMap(data.rows, appConfig.EXCLUDE_FIELDS);
+      data.rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+      firstDataLoaded = true;
+      loadData(data.rows);
+    } else {
+      loadData(data.rows);
+    }
+    /*
+    if ($scope.view.playing) {
+      timers.play = $timeout(function(){
+        if (lastGoodByte + appConfig.PLAY_INCREMENT < fileSize) {
+          var end = Math.min((lastGoodByte + appConfig.PLAY_INCREMENT),fileSize);
+          console.log("Asking server: start: ", lastGoodByte, "end: ", end);
+          socket.emit('readLocalFile', {
+            path : $scope.view.filePath,
+            start : lastGoodByte,
+            end : end,
+            columns : columns
+          });
+        } else {
+          $timeout.cancel(timers.play);
+          $scope.view.playing = false;
+        }
+      },500);
+    }*/
+  });
+
+  var resetFields = function() {
+    $scope.view.fieldState.length = 0;
+    $scope.view.graph = null;
+    $scope.view.dataField = null;
+    $scope.view.errors.length = 0;
+    $scope.view.loadedFileName = "";
+    useIterationsForTimestamp = false;
+    iteration = 0;
+    loadedCSV.length = 0;
+    loadedFields.length = 0;
     firstDataLoaded = false;
+    fileSize = 0;
+    firstGoodByte = 0;
+    lastGoodByte = 0;
+    columns = null;
+    timestamps.length = 0;
+  };
+
+  /*
+  socket.on('finish', function(){
+    if (!firstDataLoaded) {
+      loadedFields = generateFieldMap(firstRows, appConfig.EXCLUDE_FIELDS);
+      firstRows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
+      firstDataLoaded = true;
+      loadData(firstRows);
+    }
+  });
 
 
+  socket.on('fileStats', function(stats){
+    socket.emit('getLocalFile', {
+      path : $scope.view.filePath,
+      start : 0,
+      end : stats.size
+    });
+  });
+    */
   // the "Show/Hide Options" button
   $scope.toggleOptions = function() {
     $scope.view.optionsVisible = !$scope.view.optionsVisible;
@@ -42,83 +130,64 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
   };
 
-  $scope.getRemoteFile = function() {
-    $scope.view.windowing.show = false;
-    $scope.view.windowing.paused = false;
-    $scope.view.windowing.aborted = false;
-    $scope.$broadcast("fileUploadChange");
-    $scope.view.loading = true;
-    // we do a quick test here to see if the server supports the Range header.
-    // If so, we try to stream. If not, we try to download.
-    $http.head($scope.view.filePath, {
-      'headers': {
-        'Range': 'bytes=0-32'
-      }
-    }).then(function(response) {
-      if (response.status === 206) {
-        // now we check to see how big the file is
-        $http.head($scope.view.filePath).then(function(response) {
-          var contentLength = response.headers('Content-Length');
-          if (contentLength > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
-            $scope.view.windowing.show = true;
-            $scope.view.windowing.size = appConfig.WINDOW_SIZE;
-            handleError("File too large, automatic sliding window enabled.", "warning");
-          }
-          streamRemoteFile($scope.view.filePath);
-        });
-      } else {
-        downloadFile($scope.view.filePath);
-      }
-    }, function() {
-      downloadFile($scope.view.filePath);
+  $scope.getFile = function() {
+    resetFields();
+    if(isLocal()) {
+      socket.emit('readLocalFile', {
+        path : $scope.view.filePath,
+        byteLimit : appConfig.FIRST_VIEW_SIZE,
+        columns : columns
+      });
+      //socket.emit('getLocalFile', {path : $scope.view.filePath});
+    } else if (isRemote()) {
+      socket.emit('getRemoteFile', {url : $scope.view.filePath});
+    }
+    setFileTitle();
+  };
+
+  var setFileTitle = function() {
+    var parts = $scope.view.filePath.split('/');
+    $scope.view.loadedFileName = parts[parts.length - 1];
+  };
+
+  $scope.play = function() {
+    $scope.view.playing = true;
+    //var end = Math.min((lastGoodByte + appConfig.PLAY_INCREMENT),fileSize);
+    socket.emit('playLocalFile', {
+      path : $scope.view.filePath,
+      speed : appConfig.PLAY_SPEED
     });
   };
 
-  $scope.canDownload = function() {
-    var pathParts = $scope.view.filePath.split("://");
-    if ((pathParts[0] === "https" || pathParts[0] === "http") && pathParts.length > 1 && pathParts[1].length > 0) {
+  $scope.pause = function() {
+    $scope.view.playing = false;
+    socket.emit('pauseLocalFile');
+  };
+
+  $scope.validPath = function() {
+    if (isRemote() || isLocal()) {
       return true;
-    } else {
-      return false;
     }
+    return false;
   };
 
-  $scope.abortParse = function() {
-    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.abort)) {
-      streamParser.abort();
-      $scope.view.windowing.paused = false;
-      $scope.view.windowing.aborted = true;
+  var isRemote = function() {
+    var urlParts = $scope.view.filePath.split("://");
+    if (urlParts.length > 1) {
+      var tldParts = urlParts[1].split(".");
+      if ((urlParts[0] === "https" || urlParts[0] === "http") && tldParts.length > 1 && tldParts[1].length > 0) {
+        return true;
+      }
     }
+    return false;
   };
 
-  $scope.pauseParse = function() {
-    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.pause)) {
-      streamParser.pause();
-      $scope.view.windowing.paused = true;
+  var isLocal = function() {
+    var pathParts = $scope.view.filePath.split("/");
+    if (pathParts.length > 1 && pathParts[0].length < 1 && pathParts[1].length > 0) {
+      return true;
     }
-  };
-
-  $scope.resumeParse = function() {
-    if (angular.isDefined(streamParser) && angular.isDefined(streamParser.resume)) {
-      streamParser.resume();
-      $scope.view.windowing.paused = false;
-    }
-  };
-
-  $scope.getLocalFile = function(event) {
-    $scope.view.filePath = event.target.files[0].name;
-    if (event.target.files[0].size > $scope.view.windowing.threshold && $scope.view.windowing.threshold !== -1) {
-      $scope.view.windowing.show = true;
-      $scope.view.windowing.size = appConfig.WINDOW_SIZE;
-      handleError("File too large, automatic sliding window enabled.", "warning");
-    }
-    $scope.view.loading = true;
-    streamLocalFile(event.target.files[0]);
-  };
-
-  var getRemoteFileName = function(url) {
-    var pathParts = url.split("/");
-    return pathParts[pathParts.length - 1];
+    return false;
   };
 
   var loadData = function(data) {
@@ -182,117 +251,22 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     }
   };
 
-  var resetFields = function() {
-    // reset fields
-    $scope.view.fieldState.length = 0;
-    $scope.view.graph = null;
-    $scope.view.dataField = null;
-    $scope.view.errors.length = 0;
-    $scope.view.loadedFileName = "";
-    //$scope.view.windowing.show = false;
-    //$scope.view.windowing.paused = false;
-    //$scope.view.windowing.aborted = false;
-    useIterationsForTimestamp = false;
-    iteration = 0;
-    loadedCSV.length = 0;
-    loadedFields.length = 0;
-    firstDataLoaded = false;
-  };
-
-  var downloadFile = function(url) {
-    resetFields();
-    Papa.parse(url, {
-      download: true,
-      skipEmptyLines: true,
-      header: true,
-      dynamicTyping: true,
-      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
-      comments: "#",
-      complete: function(results) {
-        if (!angular.isDefined(results.data)) {
-          handleError("An error occurred when attempting to download file.", "danger");
-        } else {
-          $scope.view.loadedFileName = getRemoteFileName(url);
-          loadedFields = generateFieldMap(results.data, appConfig.EXCLUDE_FIELDS);
-          results.data.splice(0, appConfig.HEADER_SKIPPED_ROWS);
-          loadData(results.data);
-        }
-        $scope.view.loading = false;
-        $scope.$apply();
-      },
-      error: function(error) {
-        $scope.view.loading = false;
-        handleError("Could not download file.", "danger");
-      }
-    });
-  };
-
-  var streamRemoteFile = function(url) {
-    resetFields();
-    Papa.RemoteChunkSize = appConfig.REMOTE_CHUNK_SIZE;
-    var firstChunkComplete = false;
-    Papa.parse(url, {
-      download: true,
-      skipEmptyLines: true,
-      header: true,
-      dynamicTyping: true,
-      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
-      comments: "#",
-      chunk: function(chunk, parser) {
-        streamParser = parser;
-        loadData(chunk.data);
-      },
-      beforeFirstChunk: function(chunk) {
-        $scope.view.loadedFileName = getRemoteFileName(url);
-        var rows = chunk.split(/\r\n|\r|\n/);
-        loadedFields = generateFieldMap(rows, appConfig.EXCLUDE_FIELDS);
-        rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
-        $scope.view.loading = false;
-        rows = rows.join('\n');
-        return rows;
-      },
-      //fastMode: true, // automatically enabled if no " appear
-      error: function(error) {
-        handleError("Could not stream file.", "danger");
-        $scope.view.loading = false;
-      }
-    });
-  };
-
-  // read and parse a CSV file
-  var streamLocalFile = function(file) {
-    resetFields();
-    Papa.LocalChunkSize = appConfig.LOCAL_CHUNK_SIZE; // set this to a reasonable size
-    var firstChunkComplete = false;
-    Papa.parse(file, {
-      skipEmptyLines: true,
-      header: true,
-      dynamicTyping: true,
-      worker: false, // multithreaded, !but does NOT work with other libs in app.js or streaming
-      comments: "#",
-      chunk: function(chunk, parser) {
-        streamParser = parser;
-        loadData(chunk.data);
-      },
-      beforeFirstChunk: function(chunk) {
-        $scope.view.loadedFileName = file.name;
-        var rows = chunk.split(/\r\n|\r|\n/);
-        loadedFields = generateFieldMap(rows, appConfig.EXCLUDE_FIELDS);
-        rows.splice(1, appConfig.HEADER_SKIPPED_ROWS);
-        $scope.view.loading = false;
-        rows = rows.join('\n');
-        return rows;
-      },
-      //fastMode: true, // automatically enabled if no " appear
-      error: function(error) {
-        handleError(error, "danger");
-        $scope.view.loading = false;
-      }
-    });
-  };
-
   // show errors as "notices" in the UI
-  var handleError = function(error, type, showOnce) {
+  var handleError = function(message, type, showOnce) {
+    switch (type) {
+      case "info" :
+        toastr.info(message);
+        break;
+      case "warning" :
+        toastr.warning(message);
+        break;
+      case "danger" :
+        toastr.error(message);
+        break;
+      default :
+        toastr.info(message);
+    }
+    /*
     showOnce = typeof showOnce !== 'undefined' ? showOnce : false;
     exists = false;
     if (showOnce) {
@@ -309,6 +283,7 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       "type": type
     });
     $scope.$apply();
+    */
   };
 
   $scope.clearErrors = function() {
@@ -451,24 +426,26 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
   // If TIMESTAMP is not present, use iterations instead and set global useIterationsForTimestamp=true
   // also determine if dealing with OPF file and use its special format (skip 3 header rows, ...)
   var generateFieldMap = function(rows, excludes) {
-    var header = rows[0].split(',');
+    var header = [];
+    angular.forEach(rows[0], function(value, key){
+      header.push(key);
+    });
     // OPF
-    var meta = Papa.parse(rows[2], {
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      comments: '#'
-    }).data[0]; // to get correct data-types
+    var OPFmeta = [];
+    angular.forEach(rows[1], function(value, key){
+      OPFmeta.push(value);
+    });
     var isOPF = true; //determine OPF by having only meta chars at 3rd row (not numeric, unlike normal data)
-    for (var i = 0; i < meta.length; i++) {
-      if (typeof(meta[i]) === "number") {
+    for (var i = 0; i < OPFmeta.length; i++) {
+      if (typeof(OPFmeta[i]) === "number") {
         isOPF = false;
-      } else if (meta[i] === 'R' || meta[i] === 'r') {
+      } else if (OPFmeta[i] === 'R' || OPFmeta[i] === 'r') {
         resetFieldIdx = i;
       }
     }
     if (isOPF) {
-      console.log("Detected OPF/NuPIC file. ");
-      appConfig.HEADER_SKIPPED_ROWS = 3; //default for OPF
+      console.log("Detected OPF/NuPIC file.");
+      appConfig.HEADER_SKIPPED_ROWS = 2; //default for OPF
     }
 
     if (header.indexOf(appConfig.TIMESTAMP) === -1) {
@@ -480,23 +457,12 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
       //FIXME add new field time with orig time values
     }
     // add all numeric fields not in excludes
-    var row = rows[rows.length - 2]; // take end-1th row to avoid incompletely loaded data due to chunk size
-    row = Papa.parse(row, {
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      comments: '#'
-    }); // to get correct data-types
     var headerFields = [];
-    for (var j = 0; j < header.length; j++) {
-      var value = row.data[0][j]; // Papa results structure
-      var key = header[j];
+    angular.forEach(rows[rows.length -1], function(value, key) {
       if ((typeof(value) === "number") && excludes.indexOf(key) === -1) {
         headerFields.push(key);
       }
-    }
-
-    // add 'threshold' field for anomaly detection
-    //headerFields.push('threshold*');
+    });
 
     if (headerFields.indexOf(appConfig.TIMESTAMP) === -1) { //missing
       headerFields.unshift(appConfig.TIMESTAMP); //append timestamp as 1st field
@@ -609,69 +575,89 @@ angular.module('app').controller('appCtrl', ['$scope', '$http', '$timeout', 'app
     angular.forEach(timers, function(timer) {
       $timeout.cancel(timer);
     });
+    angular.forEach(intervals, function(interval){
+      $interval.cancel(interval);
+    });
   });
 
+  var highlightAnomaly = function(canvas, area, g) {
+    /* draws a line for the threshold
+    canvas.fillStyle = "#C4F605";
+    var thresh = g.toDomYCoord(CONFIG.ANOMALY_THRESHOLD,1);
+    canvas.fillRect(area.x, thresh, area.w, 1);
+    */
 
-  // highlight areas where a select function value crosses a threshold
-  // used in dygraph's underlayCallback
-  function highlightAnomaly(canvas, area, g) {
-
-    var timeIdx = loadedFields.indexOf(appConfig.TIMESTAMP);
+    var timeIdx = 0;
 
     // draw rectangle on x0..x1
     function highlight_period(x_start, x_end, color) {
-      var canvas_left_x = g.toDomXCoord(x_start);
-      var canvas_right_x = g.toDomXCoord(x_end);
-      var canvas_width = canvas_right_x - canvas_left_x;
+      var width = x_end - x_start;
       canvas.fillStyle = color;
-      canvas.fillRect(canvas_left_x, area.y, canvas_width, area.h);
+      canvas.fillRect(x_start, area.y, width, area.h);
     }
 
-    // find x values matching condition on y-value
-    // params: data (all fields), watchedFieldName (string), threshold (for condition >thr)
-    // return array with indices of anomalies
-    function find_where(data, watchedFieldName, threshold) {
-      var results = [];
-      var fnIdx = loadedFields.indexOf(watchedFieldName);
-      if (fnIdx === -1) {
-        handleError("Highlighting cannot work, field " + watchedFieldName + " not found!", "danger", true);
-        return [];
-      }
-      for (var i = 0; i < data.length; i++) {
-        var value = data[i][fnIdx];
-        // the condition is here
-        if (value >= threshold) {
-          var time = data[i][timeIdx];
-          //console.log("Found anomaly at "+time+" with value "+value);
-          results.push(time);
-        }
-      }
-      return results;
-    } //end find_where
-
-    //highlight_period(2, 5, yellow); //test
-    // find relevant points
     for (var i = 0; i < $scope.view.fieldState.length; i++) {
-      var selected, modDt, color, field;
-      field = $scope.view.fieldState[i];
-      if (field.highlighted === true && field.highlightThreshold !== null) {
-        selected = find_where(backupCSV, field.name, field.highlightThreshold);
-        // compute optimal/visible high. radius as 1% of screen area
-        modDt = 0.01 * loadedCSV.length; 
-        // plot all of them
-        var transparency = 0.4; // min/max opacity for overlapping highs
-        color = field.color.replace("rgb", "rgba").replace(")", "," + transparency + ")");
-        var lastHigh = -1;
-        for (var x = 0; x < selected.length; x++) {
-          if(selected[x] - modDt >= lastHigh) {
-            highlight_period(selected[x] - modDt, selected[x] + modDt, color);
-            lastHigh = selected[x] + modDt;
+      var start,
+        end,
+        first,
+        last,
+        color,
+        field,
+        fieldIndex,
+        threshold,
+        transparency,
+        previousIndex;
+
+      if ($scope.view.fieldState[i].highlighted === true && $scope.view.fieldState[i].highlightThreshold !== null) {
+        field = $scope.view.fieldState[i];
+        fieldIndex = loadedFields.indexOf(field.name);
+        if (fieldIndex < 0) {
+          return;
+        }
+        color = field.color.replace("rgb", "rgba").replace(")", ",0.5)");
+        start = null;
+        end = null;
+        last = null;
+        first = null;
+        for (var t = 0; t < loadedCSV.length; t++) {
+          if (loadedCSV[t][fieldIndex] >= field.highlightThreshold && start === null) {
+            start = g.toDomXCoord(loadedCSV[t][0]);
+            first = t;
+          }
+          if (loadedCSV[t][fieldIndex] >= field.highlightThreshold) {
+            last = t;
+          }
+          if (start !== null && (loadedCSV[t][fieldIndex] < field.highlightThreshold || t >= loadedCSV.length - 1)) {
+            // get leading slope
+            if (t === last) {
+              end = g.toDomXCoord(loadedCSV[last][0]);
+            } else {
+              var x1 = g.toDomXCoord(loadedCSV[t][0]) - g.toDomXCoord(loadedCSV[last][0]);
+              var y1 = loadedCSV[last][fieldIndex] - loadedCSV[t][fieldIndex];
+              var z = Math.atan(x1 / y1);
+              var y2 = loadedCSV[last][fieldIndex] - field.highlightThreshold;
+              var x2 = y2 * Math.tan(z);
+              end = g.toDomXCoord(loadedCSV[last][0]) + x2;
+            }
+            // get trailing slope
+            previousIndex = first - 1;
+            if (previousIndex >= 0) {
+              var x3 = start - g.toDomXCoord(loadedCSV[previousIndex][0]);
+              var y3 = loadedCSV[first][fieldIndex] - loadedCSV[previousIndex][fieldIndex];
+              var z2 = Math.atan(x3 / y3);
+              var y4 = loadedCSV[first][fieldIndex] - field.highlightThreshold;
+              var x4 = y4 * Math.tan(z2);
+              start = start - x4;
+            }
+            highlight_period(start, end, color);
+            start = null;
+            end = null;
+            last = null;
+            first = null;
           }
         }
       }
     }
-
-  } // end highlightAnomaly callback
-
+  };
 
 }]);

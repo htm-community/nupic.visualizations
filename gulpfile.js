@@ -15,17 +15,25 @@ var appJS = [
   "client/src/app/**/*.js"
 ];
 
+var server = [
+  "server/**/*.js",
+  "server/**/*.json"
+];
+
 var externalJS = [
   "client/bower_components/angular/angular.min.js",
+  "client/bower_components/angular-socket-io/socket.min.js",
   "client/bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js",
   "client/bower_components/dygraphs/dygraph-combined.js",
   "client/bower_components/moment/min/moment.min.js",
-  "client/bower_components/papaparse/papaparse.min.js"
+  "client/bower_components/angular-toastr/dist/angular-toastr.tpls.min.js",
+  "client/bower_components/angular-animate/angular-animate.min.js",
+  "node_modules/socket.io-stream/socket.io-stream.js"
 ];
 
 gulp.task('default', ['test','build']);
 
-gulp.task('build', ['externaljs', 'appjs', 'less', 'static']);
+gulp.task('build', ['externaljs', 'appjs', 'less', 'static', 'server']);
 
 gulp.task('clean', function() {
   return del(['build/*']);
@@ -36,14 +44,18 @@ gulp.task('appjs', ['clean'], function() {
     .pipe(jshint())
     .pipe(jshint.reporter('default'))
     .pipe(concat('app.js'))
-    .pipe(uglify())
-    .pipe(gulp.dest('build'));
+    //.pipe(uglify())
+    .pipe(gulp.dest('build/client'));
+});
+
+gulp.task('server', ['clean'], function(){
+  return gulp.src(server).pipe(gulp.dest('build/server'));
 });
 
 gulp.task('externaljs', ['clean'], function() {
   return gulp.src(externalJS)
     .pipe(concat("external.js"))
-    .pipe(gulp.dest('build'));
+    .pipe(gulp.dest('build/client'));
 });
 
 gulp.task('less', ['clean'], function() {
@@ -55,7 +67,7 @@ gulp.task('less', ['clean'], function() {
       ]
     }))
     .pipe(minifyCSS())
-    .pipe(gulp.dest('build'));
+    .pipe(gulp.dest('build/client'));
 });
 
 var files = [
@@ -69,12 +81,12 @@ gulp.task('static', ['assets', 'fonts']);
 
 gulp.task('assets', ['clean'], function(){
   return gulp.src(files)
-    .pipe(gulp.dest('build'))
+    .pipe(gulp.dest('build/client'))
 });
 
 gulp.task('fonts', ['clean'], function(){
   return gulp.src(fonts)
-    .pipe(gulp.dest('build/fonts'))
+    .pipe(gulp.dest('build/client/fonts'))
 });
 
 gulp.task('test', function (done) {

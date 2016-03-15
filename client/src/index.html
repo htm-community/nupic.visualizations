@@ -4,46 +4,41 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <script type="text/javascript" src="external.js"></script>
-    <script type="text/javascript" src="app.js"></script>
-    <link rel="stylesheet" type="text/css" href="stylesheet.css"/>
-    <link rel="shortcut icon" href="favicon.ico">
-    <title>NuPIC Visualization</title>
-    <base href="/">
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="/static/external.js"></script>
+    <script type="text/javascript" src="/static/app.js"></script>
+    <link rel="stylesheet" type="text/css" href="/static/stylesheet.css"/>
+    <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon" />
+    <title>CSV Visualization</title>
+    <base href="/app/">
   </head>
   <body ng-controller="appCtrl">
     <div class="container-fluid">
       <div class="viz-header">
 
         <div class="row">
-          <div class="col-md-6">
-            <div class="row">
-              <div class="col-md-12 title">
-                <img src="numenta_black.svg" alt="Numenta logo"><h1>NuPIC Visualization</h1>
-              </div>
-            </div>
-            <p>Enter a URL from which to download a file, or browse for a local file.</p>
-            <div class="form-inline">
-              <div class="form-group">
-                <div class="input-group">
-                  <input type="text" class="form-control file-name" ng-model="view.filePath">
-                  <span class="input-group-btn">
-                    <button class="btn btn-default" type="button" ng-disabled="!canDownload()" ng-click="getRemoteFile()">Download</button>
-                  </span>
-                </div>
-                <span class="btn btn-primary btn-file">
-                  Browse&hellip; <input type="file" file-upload-change="getLocalFile">
-                </span>
-                <div class="errors">
-                  <div ng-repeat="error in view.errors track by $index" class="alert alert-{{error.type}} alert-dismissible" role="alert">
-                    <button type="button" class="close" aria-label="Close" ng-click="clearError($index)"><span aria-hidden="true">&times;</span></button>
-                    {{error.message}}
+          <div class="col-md-4 title">
+            <img src="/static/numenta_black.svg" alt="Numenta logo"><h1>CSV Visualization</h1>
+          </div>
+          <div class="col-md-8 input-form">
+
+            <form>
+              <div class="form-inline">
+                <div class="form-group">
+                  <input type="text" class="form-control file-name" ng-model="view.filePath" placeholder="Enter a path to a local CSV file.">
+                  <button class="btn btn-primary" type="button" ng-disabled="!validPath()" ng-click="getFile()">Get file &hellip;</button>
+                  <div class="errors">
+                    <div ng-repeat="error in view.errors track by $index" class="alert alert-{{error.type}} alert-dismissible" role="alert">
+                      <button type="button" class="close" aria-label="Close" ng-click="clearError($index)"><span aria-hidden="true">&times;</span></button>
+                      {{error.message}}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </form>
           </div>
-          <div class="col-md-6 usage" ng-show="view.graph">
+          <!--
+          <div class="col-md-6 usage" ng-show="false">
             <h3>Graph Usage</h3>
             <ul>
               <li>Zoom in: use mouse to select desired range for zoom in the graph.</li>
@@ -52,6 +47,7 @@
               <li>To normalize/rescale some values, select a reference field in Data and then desired field(s) in Normalize.</li>
             </ul>
           </div>
+          -->
         </div>
       </div>
       <div class="row graphs">
@@ -59,7 +55,13 @@
           <button class="btn btn-default btn-sm pull-right options-toggle" ng-click="toggleOptions()"><span class="glyphicon glyphicon-triangle-left" ng-show="view.optionsVisible"></span> <span ng-hide="view.optionsVisible">Show</span><span ng-show="view.optionsVisible">Hide</span> Options <span class="glyphicon glyphicon-triangle-right" ng-show="!view.optionsVisible"></span></button>
         </div>
         <div ng-class="{'col-md-6' : view.optionsVisible, 'col-md-12' : !view.optionsVisible}">
-          <h3 class="file-name-label">{{view.loadedFileName}}</h3>
+          <h3 class="file-name-label">
+            <span class="read-controls" ng-show="view.graph">
+              <button class="btn btn-default" ng-hide="view.playing" ng-click="play()"><span class="glyphicon glyphicon-play"></span></button>
+              <button class="btn btn-default" ng-hide="!view.playing" ng-click="pause()"><span class="glyphicon glyphicon-pause"></span></button>
+            </span>
+            {{view.loadedFileName}}
+          </h3>
           <div class="loading" ng-show="view.loading"><span class="loading-spin"></span></div>
           <div class="graph" id="dataContainer"></div>
         </div>
@@ -89,17 +91,6 @@
                   <tr field-options ng-repeat="field in view.fieldState track by field.name"></tr>
                 </tbody>
               </table>
-            </div>
-          </div>
-          <div class="windowing row" ng-show="view.windowing.show">
-            <div class="col-md-9">
-              <span class="warning">File is over {{view.windowing.threshold|bytes}}. Windowing is enabled.</span>
-            </div>
-            <div class="col-md-3" ng-hide="view.windowing.paused">
-              <button class="btn btn-primary pull-right" ng-disabled="view.windowing.aborted" ng-click="pauseParse()">Pause</button>
-            </div>
-            <div class="col-md-3" ng-show="view.windowing.paused">
-              <button class="btn btn-primary pull-right" ng-disabled="view.windowing.aborted" ng-click="resumeParse()">Resume</button>
             </div>
           </div>
         </div>

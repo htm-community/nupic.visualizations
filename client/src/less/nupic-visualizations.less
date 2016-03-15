@@ -1,7 +1,7 @@
 .viz-header {
   background-color:#337ab7;
   color:#fff;
-  padding:20px 20px 20px 85px;
+  padding:40px 20px 20px 40px;
   margin:0 -15px;
   box-shadow:0 3px 8px rgba(0,0,0,0.3);
   button.ready {
@@ -44,14 +44,22 @@
   }
 }
 
+.input-form {
+  margin-top:25px;
+}
+
 .file-name-label {
-  padding-left:70px;
+  padding-left:20px;
   margin-top:10px;
   min-height:26px;
 }
 
 .graphs {
   padding-top:15px;
+  .read-controls {
+    margin-top:15px;
+    text-align:center;
+  }
   .show-options {
     position:absolute;
     right:15px;
@@ -166,7 +174,7 @@
 input.file-name {
   background-color: white !important;
   cursor: text !important;
-  width: 25vw !important;
+  width: 50vw !important;
 }
 
 @keyframes glowingButton {
@@ -240,4 +248,19 @@ input.file-name {
   to {
     transform: rotate(360deg);
   }
+}
+
+// angular-toastr overrides
+
+body #toast-container > div {
+  -moz-box-shadow: 0 0 12px rgba(0,0,0,0.35);
+  -webkit-box-shadow: 0 0 12px rgba(0,0,0,0.35);
+  box-shadow: 0 0 12px rgba(0,0,0,0.35);
+}
+body #toast-container > :hover {
+  -moz-box-shadow: 0 0 12px rgba(0,0,0,0.75);
+  -webkit-box-shadow: 0 0 12px rgba(0,0,0,0.75);
+  box-shadow: 0 0 12px rgba(0,0,0,0.75);
+  opacity: 1;
+  cursor: pointer;
 }
